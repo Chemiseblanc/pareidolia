@@ -1,25 +1,57 @@
 """Pytest configuration and shared fixtures."""
 
 import shutil
-import tempfile
 from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 
+# Test directory - gitignored and auto-cleaned
+TEST_TMP_DIR = Path(__file__).parent.parent / ".test-tmp"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_test_dir() -> Generator[None, None, None]:
+    """Clean up test directory before and after all tests.
+
+    This fixture runs automatically for the entire test session.
+    It cleans up the test directory at the start and ensures cleanup
+    on successful completion.
+    """
+    # Clean up before tests
+    if TEST_TMP_DIR.exists():
+        shutil.rmtree(TEST_TMP_DIR)
+    TEST_TMP_DIR.mkdir(parents=True, exist_ok=True)
+
+    yield
+
+    # Clean up after successful test session
+    if TEST_TMP_DIR.exists():
+        shutil.rmtree(TEST_TMP_DIR)
+
 
 @pytest.fixture
 def temp_dir() -> Generator[Path, None, None]:
-    """Create a temporary directory for tests.
+    """Create a temporary directory for tests in gitignored location.
+
+    Each test gets its own subdirectory under .test-tmp/.
+    The directory is cleaned up after the test completes.
 
     Yields:
         Path to temporary directory
     """
-    temp_path = Path(tempfile.mkdtemp())
+    import uuid
+
+    # Create unique subdirectory for this test
+    temp_path = TEST_TMP_DIR / str(uuid.uuid4())
+    temp_path.mkdir(parents=True, exist_ok=True)
+
     try:
         yield temp_path
     finally:
-        shutil.rmtree(temp_path)
+        # Clean up this test's directory
+        if temp_path.exists():
+            shutil.rmtree(temp_path)
 
 
 @pytest.fixture
