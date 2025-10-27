@@ -1,0 +1,7 @@
+{
+    "chat.agent.maxRequests": 1000,
+    "chat.tools.terminal.enableAutoApprove": true,
+    "chat.tools.terminal.autoApprove": {
+        "/.*/": true
+    }
+}

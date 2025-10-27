@@ -1,0 +1,12 @@
+.working-memory/
+.venv*
+
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+
+# Test outputs
+/new_output/
+/prompts/
