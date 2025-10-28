@@ -54,11 +54,15 @@ class Generator:
         """
         self.config = config
         self.loader = TemplateLoader(config.root)
-        self.composer = PromptComposer(self.loader, Jinja2Engine())
+        self.composer = PromptComposer(
+            self.loader, Jinja2Engine(), config.generate
+        )
 
         self.naming = get_naming_convention(config.generate.tool)
         self.generator = PromptGenerator(self.composer, self.naming)
-        self.variant_generator = VariantGenerator(self.loader, self.composer)
+        self.variant_generator = VariantGenerator(
+            self.loader, self.composer, config.generate
+        )
 
     def generate_all(
         self,
@@ -131,6 +135,7 @@ class Generator:
                     output_dir=output_dir,
                     library=self.config.generate.library,
                     example_names=example_names,
+                    prompt_config=self.config.prompts,
                 )
                 files_generated.append(output_path)
 
@@ -199,6 +204,7 @@ class Generator:
                     output_dir=output_dir,
                     library=self.config.generate.library,
                     example_names=example_names,
+                    prompt_config=self.config.prompts,
                 )
                 variant_files.append(variant_path)
                 logger.info(
@@ -222,6 +228,7 @@ class Generator:
                         base_prompt=base_prompt,
                         tool=tool,
                         timeout=60,
+                        prompt_config=self.config.prompts,
                     )
 
                     # Generate the variant action name and use the naming convention
@@ -308,6 +315,7 @@ class Generator:
                 output_dir=output_dir,
                 library=self.config.generate.library,
                 example_names=example_names,
+                prompt_config=self.config.prompts,
             )
             files_generated.append(output_path)
 

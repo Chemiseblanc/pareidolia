@@ -1,7 +1,8 @@
 """Data models for pareidolia."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from pareidolia.utils.validation import validate_identifier
 
@@ -99,12 +100,16 @@ class PromptConfig:
         action: Action/task to use as base
         variants: List of variant names to generate
         cli_tool: Optional specific CLI tool to use
+        metadata: Optional metadata dictionary for tool-specific frontmatter.
+                 Can contain arbitrary key-value pairs such as description,
+                 chat_mode, model, tags, temperature, etc.
     """
 
     persona: str
     action: str
     variants: list[str]
     cli_tool: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Validate prompt configuration."""

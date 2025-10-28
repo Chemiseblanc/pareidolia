@@ -285,3 +285,96 @@ class TestPromptConfig:
                 variants=["update"],
                 cli_tool="   ",
             )
+
+    def test_prompt_config_with_metadata(self) -> None:
+        """Test creating prompt config with metadata."""
+        metadata = {
+            "description": "Test prompt",
+            "model": "claude-3.5-sonnet",
+            "temperature": 0.7,
+        }
+        config = PromptConfig(
+            persona="researcher",
+            action="research",
+            variants=["update"],
+            metadata=metadata,
+        )
+        assert config.metadata == metadata
+        assert config.metadata["description"] == "Test prompt"
+        assert config.metadata["model"] == "claude-3.5-sonnet"
+        assert config.metadata["temperature"] == 0.7
+
+    def test_prompt_config_without_metadata_defaults_to_empty_dict(self) -> None:
+        """Test that metadata defaults to empty dict when not provided."""
+        config = PromptConfig(
+            persona="researcher",
+            action="research",
+            variants=["update"],
+        )
+        assert config.metadata == {}
+        assert isinstance(config.metadata, dict)
+
+    def test_prompt_config_with_nested_metadata(self) -> None:
+        """Test creating prompt config with nested metadata structures."""
+        metadata = {
+            "description": "Complex prompt",
+            "tags": ["tag1", "tag2", "tag3"],
+            "settings": {
+                "model": "claude-3.5-sonnet",
+                "temperature": 0.7,
+                "max_tokens": 4096,
+            },
+            "chat_mode": "extended",
+        }
+        config = PromptConfig(
+            persona="researcher",
+            action="research",
+            variants=["update"],
+            metadata=metadata,
+        )
+        assert config.metadata == metadata
+        assert config.metadata["tags"] == ["tag1", "tag2", "tag3"]
+        assert config.metadata["settings"]["model"] == "claude-3.5-sonnet"
+        assert config.metadata["settings"]["temperature"] == 0.7
+
+    def test_prompt_config_metadata_with_various_types(self) -> None:
+        """Test that metadata can contain various data types."""
+        metadata = {
+            "string_value": "test",
+            "int_value": 42,
+            "float_value": 3.14,
+            "bool_value": True,
+            "list_value": [1, 2, 3],
+            "dict_value": {"key": "value"},
+            "none_value": None,
+        }
+        config = PromptConfig(
+            persona="researcher",
+            action="research",
+            variants=["update"],
+            metadata=metadata,
+        )
+        assert config.metadata == metadata
+        assert isinstance(config.metadata["string_value"], str)
+        assert isinstance(config.metadata["int_value"], int)
+        assert isinstance(config.metadata["float_value"], float)
+        assert isinstance(config.metadata["bool_value"], bool)
+        assert isinstance(config.metadata["list_value"], list)
+        assert isinstance(config.metadata["dict_value"], dict)
+        assert config.metadata["none_value"] is None
+
+    def test_prompt_config_metadata_does_not_share_default(self) -> None:
+        """Test that metadata default factory creates separate dicts."""
+        config1 = PromptConfig(
+            persona="researcher",
+            action="research",
+            variants=["update"],
+        )
+        config2 = PromptConfig(
+            persona="analyst",
+            action="analyze",
+            variants=["refine"],
+        )
+        # Verify they have different dict instances
+        assert config1.metadata is not config2.metadata
+        assert config1.metadata == config2.metadata == {}

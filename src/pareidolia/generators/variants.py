@@ -1,12 +1,13 @@
 """Variant generation orchestration."""
 
 import logging
+from typing import Any
 
 from pareidolia.core.exceptions import (
     NoAvailableCLIToolError,
     VariantTemplateNotFoundError,
 )
-from pareidolia.core.models import PromptConfig
+from pareidolia.core.models import GenerateConfig, PromptConfig
 from pareidolia.generators.cli_tools import (
     CLITool,
     get_available_tools,
@@ -26,22 +27,26 @@ class VariantGenerator:
         loader: Template loader
         composer: Prompt composer
         engine: Template engine
+        generate_config: Optional generate configuration for context
     """
 
     def __init__(
         self,
         loader: TemplateLoader,
         composer: PromptComposer,
+        generate_config: GenerateConfig | None = None,
     ) -> None:
         """Initialize variant generator.
 
         Args:
             loader: Template loader for variant templates
             composer: Prompt composer for rendering
+            generate_config: Optional generate configuration for tool/library context
         """
         self.loader = loader
         self.composer = composer
         self.engine = Jinja2Engine()
+        self.generate_config = generate_config
 
     def generate_variants(
         self,
@@ -78,6 +83,7 @@ class VariantGenerator:
                     base_prompt=base_prompt,
                     tool=tool,
                     timeout=timeout,
+                    prompt_config=prompt_config,
                 )
                 variants[variant_name] = variant_content
                 logger.info(f"Generated variant: {variant_name}")
@@ -136,6 +142,7 @@ class VariantGenerator:
         base_prompt: str,
         tool: CLITool,
         timeout: int,
+        prompt_config: PromptConfig | None = None,
     ) -> str:
         """Generate a single variant using AI transformation.
 
@@ -146,6 +153,7 @@ class VariantGenerator:
             base_prompt: Base prompt to transform
             tool: CLI tool to use
             timeout: Timeout in seconds
+            prompt_config: Optional prompt configuration for metadata access
 
         Returns:
             Generated variant content
@@ -157,12 +165,28 @@ class VariantGenerator:
         # Load and render variant template
         template_content = self.loader.load_variant_template(variant_name)
 
-        # Render template with context
-        context = {
+        # Build context with all available information
+        context: dict[str, Any] = {
             "persona_name": persona_name,
             "action_name": action_name,
             "variant_name": variant_name,
         }
+
+        # Add tool and library from generate_config if available
+        if self.generate_config is not None:
+            context["tool"] = self.generate_config.tool
+            context["library"] = self.generate_config.library
+        else:
+            context["tool"] = "standard"
+            context["library"] = None
+
+        # Add metadata from prompt_config if available
+        if prompt_config is not None:
+            context["metadata"] = prompt_config.metadata
+        else:
+            context["metadata"] = {}
+
+        # Render template with context
         variant_prompt = self.engine.render(template_content, context)
 
         # Generate variant using CLI tool

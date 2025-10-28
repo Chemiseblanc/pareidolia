@@ -1,3 +1,20 @@
+{%- if metadata -%}
+---
+{%- if metadata.description %}
+description: {{ metadata.description }}
+{%- endif %}
+{%- if metadata.model %}
+model: {{ metadata.model }}
+{%- endif %}
+{%- if metadata.chat_mode %}
+chat_mode: {{ metadata.chat_mode }}
+{%- endif %}
+{%- if metadata.tags %}
+tags: {{ metadata.tags | tojson }}
+{%- endif %}
+---
+
+{% endif -%}
 You are transforming an existing prompt into a "refine" variant.
 
 The refine variant should modify the original prompt to focus on improving

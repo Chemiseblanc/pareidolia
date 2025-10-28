@@ -40,6 +40,15 @@ output_dir = "prompts"
 # action = "analyze"
 # variants = ["expand", "refine", "summarize"]
 # cli_tool = "claude"  # Optional: specific CLI tool to use
+
+# Optional: Metadata for tool-specific frontmatter generation
+# Attach arbitrary metadata to prompts for use in templates
+# [prompts.metadata]
+# description = "Comprehensive research analysis assistant"
+# chat_mode = "extended"
+# model = "claude-3.5-sonnet"
+# tags = ["analysis", "research", "report-generation"]
+# temperature = 0.7
 """
 
     # Example persona content
@@ -64,9 +73,26 @@ from multiple sources and identifying key insights.
 
     # Example action template content
     EXAMPLE_ACTION = """\
+{%- if metadata -%}
+---
+{%- if metadata.description %}
+description: {{ metadata.description }}
+{%- endif %}
+{%- if metadata.model %}
+model: {{ metadata.model }}
+{%- endif %}
+{%- if tool %}
+tool: {{ tool }}
+{%- endif %}
+{%- if library %}
+library: {{ library }}
+{%- endif %}
+---
+
+{% endif -%}
 # Analysis Task
 
-You are acting as {{ persona.name }}.
+You are acting as a {{ persona }}.
 
 ## Objective
 Analyze the following {{ subject_type | default("topic") }} and provide a comprehensive
@@ -85,10 +111,12 @@ assessment.
 {{ subject }}
 
 ## Example Output Format
-{% if example %}
+{% if examples %}
 Here's an example of the expected output format:
 
+{% for example in examples %}
 {{ example }}
+{% endfor %}
 {% endif %}
 
 Please provide your analysis below.

@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from pareidolia.core.models import PromptConfig
 from pareidolia.generators.naming import NamingConvention
 from pareidolia.templates.composer import PromptComposer
 from pareidolia.utils.filesystem import ensure_directory, write_file
@@ -36,6 +37,7 @@ class PromptGenerator:
         output_dir: Path,
         library: str | None = None,
         example_names: list[str] | None = None,
+        prompt_config: PromptConfig | None = None,
     ) -> Path:
         """Generate a prompt file.
 
@@ -45,6 +47,7 @@ class PromptGenerator:
             output_dir: Base output directory
             library: Optional library name
             example_names: Optional list of example names
+            prompt_config: Optional prompt configuration for metadata access
 
         Returns:
             Path to the generated file
@@ -56,7 +59,9 @@ class PromptGenerator:
             IOError: If file cannot be written
         """
         # Compose the prompt
-        prompt = self.composer.compose(action_name, persona_name, example_names)
+        prompt = self.composer.compose(
+            action_name, persona_name, example_names, prompt_config
+        )
 
         # Determine output path
         output_path = self.naming.get_output_path(output_dir, action_name, library)
