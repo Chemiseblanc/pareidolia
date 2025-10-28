@@ -18,6 +18,7 @@ These components are compiled into complete prompt files using Jinja2 templating
 - **Multi-Tool Support**: Export prompts with naming conventions for different AI tools (Claude Code, GitHub Copilot, etc.)
 - **Library Bundling**: Bundle related prompts into reusable libraries with consistent prefixes
 - **Configurable Exports**: Define default export settings in `pareidolia.toml` with CLI overrides
+- **AI-Powered Variant Generation**: Automatically generate prompt variants (update, refine, summarize, expand) using AI CLI tools
 
 ## Installation
 
@@ -47,9 +48,14 @@ your-project/
     │   ├── research.md.j2
     │   ├── refine-research.md.jinja
     │   └── update-research.md.jinja2
-    └── example/              # Example outputs (optional Jinja2)
-        ├── report-format.md
-        └── output-style.md.j2
+    ├── example/              # Example outputs (optional Jinja2)
+    │   ├── report-format.md
+    │   └── output-style.md.j2
+    └── variant/              # Variant transformation templates (optional)
+        ├── update.md.j2
+        ├── refine.md.j2
+        ├── summarize.md.j2
+        └── expand.md.j2
 ```
 
 ### Configuration (`pareidolia.toml`)
@@ -63,6 +69,13 @@ root = "pareidolia"  # Directory containing persona/action/example folders
 tool = "copilot"             # or "claude-code", etc.
 library = "promptlib"        # Optional: enables library format when set
 output_dir = "prompts"       # Where to write generated prompts
+
+[variants]
+# Optional: AI-powered variant generation
+persona = "researcher"       # Persona to use as base
+action = "research"          # Action to use as base
+generate = ["update", "refine", "summarize"]  # List of variants to generate
+cli_tool = "claude"          # Optional: specific AI tool (auto-detects if omitted)
 ```
 
 ## Usage
@@ -136,6 +149,181 @@ output/
 ├── promptlib.refine-research.prompt.md
 └── promptlib.update-research.prompt.md
 ```
+
+## Variant Generation
+
+Pareidolia can automatically generate prompt variants using AI CLI tools. Variants are transformations of base prompts (e.g., "update-research", "refine-research") that are generated during the export process using AI to transform the base prompt according to your variant templates.
+
+### What Are Variants?
+
+Variants are specialized versions of a base prompt that focus on different tasks:
+- **update**: Refreshing or updating existing content
+- **refine**: Improving quality and polish of existing content
+- **summarize**: Condensing content to essential points
+- **expand**: Elaborating with greater depth and detail
+
+### Configuration
+
+Add a `[variants]` section to your `pareidolia.toml`:
+
+```toml
+[variants]
+persona = "researcher"       # Persona to use as base
+action = "research"          # Action to use as base  
+generate = ["update", "refine", "summarize"]  # Variants to generate
+cli_tool = "claude"          # Optional: specific AI tool (auto-detects if omitted)
+```
+
+When you run `pareidolia export`, variants are automatically generated alongside the base prompt if the exported action matches the configured action.
+
+### Variant Templates
+
+Variant templates define how the AI should transform the base prompt. Create them in your `variant/` directory:
+
+```
+pareidolia/
+└── variant/
+    ├── update.md.j2
+    ├── refine.md.j2
+    ├── summarize.md.j2
+    └── expand.md.j2
+```
+
+**Template Format:**
+
+Variant templates are Jinja2 templates that receive three variables:
+- `{{ persona_name }}` - The persona name (e.g., "researcher")
+- `{{ action_name }}` - The action name (e.g., "research")
+- `{{ variant_name }}` - The variant being generated (e.g., "update")
+
+**Example variant template (`variant/update.md.j2`):**
+
+```markdown
+You are transforming an existing prompt into an "update" variant.
+
+The update variant should modify the original prompt to focus on updating
+or refreshing existing content rather than creating new content from scratch.
+
+**Context:**
+- Persona: {{ persona_name }}
+- Action: {{ action_name }}
+- Variant: {{ variant_name }}
+
+**Transformation Instructions:**
+
+1. Keep the core purpose and tone of the original prompt
+2. Shift the focus to updating/refreshing existing material
+3. Add instructions for handling existing content
+4. Maintain the persona's voice and characteristics
+
+Transform the following prompt into an update variant:
+```
+
+The AI tool receives both the rendered variant template (with transformation instructions) and the base prompt, then generates the variant accordingly.
+
+**Default Templates:**
+
+Pareidolia includes example templates in `src/pareidolia/templates/defaults/variant/`:
+- `update.md.j2` - Instructions for update variants
+- `refine.md.j2` - Instructions for refine variants
+- `summarize.md.j2` - Instructions for summarize variants
+- `expand.md.j2` - Instructions for expand variants
+
+You can copy these to your project's `variant/` directory as starting points.
+
+### Supported CLI Tools
+
+Variant generation requires at least one AI CLI tool:
+
+| Tool | Command | Installation |
+|------|---------|--------------|
+| **Codex** | `codex` | Install OpenAI Codex CLI |
+| **Copilot** | `gh copilot` | Install GitHub CLI and Copilot extension |
+| **Claude** | `claude` | Install Anthropic Claude CLI |
+| **Gemini** | `gemini` | Install Google Gemini CLI |
+
+**Auto-detection:** If you don't specify `cli_tool` in your config, Pareidolia will automatically use the first available tool from the list above.
+
+**Tool-specific:** To use a specific tool, set it in your config:
+```toml
+[variants]
+cli_tool = "claude"  # Use Claude for variant generation
+```
+
+### Generated Files and Naming
+
+Variants follow a **verb-noun** naming convention:
+
+**Without library:**
+```
+prompts/
+├── research.prompt.md           # Base prompt
+├── update-research.prompt.md    # Update variant
+├── refine-research.prompt.md    # Refine variant
+└── summarize-research.prompt.md # Summarize variant
+```
+
+**With library (Claude Code style):**
+```
+prompts/
+└── promptlib/
+    ├── research.md
+    ├── update-research.md
+    ├── refine-research.md
+    └── summarize-research.md
+```
+
+**With library (GitHub Copilot style):**
+```
+prompts/
+├── promptlib.research.prompt.md
+├── promptlib.update-research.prompt.md
+├── promptlib.refine-research.prompt.md
+└── promptlib.summarize-research.prompt.md
+```
+
+### Usage Example
+
+1. **Create variant templates:**
+```bash
+mkdir -p pareidolia/variant
+cp src/pareidolia/templates/defaults/variant/*.md.j2 pareidolia/variant/
+```
+
+2. **Configure variants in `pareidolia.toml`:**
+```toml
+[variants]
+persona = "researcher"
+action = "research"
+generate = ["update", "refine", "summarize", "expand"]
+```
+
+3. **Export with variants:**
+```bash
+pareidolia export
+```
+
+This will generate:
+- `research.prompt.md` (base prompt)
+- `update-research.prompt.md` (AI-generated update variant)
+- `refine-research.prompt.md` (AI-generated refine variant)
+- `summarize-research.prompt.md` (AI-generated summarize variant)
+- `expand-research.prompt.md` (AI-generated expand variant)
+
+### Troubleshooting
+
+**No variants generated:**
+- Ensure at least one AI CLI tool is installed and available in your PATH
+- Check that the `action` in `[variants]` matches the action being exported
+- Verify variant templates exist in your `variant/` directory
+
+**CLI tool not found:**
+- Install the required CLI tool or specify a different one with `cli_tool`
+- Check tool installation: `which claude`, `which gh`, etc.
+
+**Template not found:**
+- Ensure variant templates exist with supported extensions: `.md.j2`, `.md.jinja`, `.md.jinja2`, or `.md`
+- Copy from defaults: `cp src/pareidolia/templates/defaults/variant/*.md.j2 pareidolia/variant/`
 
 ## Project Structure
 
