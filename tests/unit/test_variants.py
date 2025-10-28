@@ -9,7 +9,7 @@ from pareidolia.core.exceptions import (
     NoAvailableCLIToolError,
     VariantTemplateNotFoundError,
 )
-from pareidolia.core.models import VariantConfig
+from pareidolia.core.models import PromptConfig
 from pareidolia.generators.variants import VariantGenerator
 from pareidolia.templates.composer import PromptComposer
 from pareidolia.templates.engine import Jinja2Engine
@@ -37,12 +37,12 @@ def variant_generator(mock_loader: Mock, mock_composer: Mock) -> VariantGenerato
 
 
 @pytest.fixture
-def variant_config() -> VariantConfig:
-    """Create a variant configuration."""
-    return VariantConfig(
+def prompt_config() -> PromptConfig:
+    """Create a prompt configuration."""
+    return PromptConfig(
         persona="researcher",
         action="research",
-        generate=["update", "refine"],
+        variants=["update", "refine"],
         cli_tool=None,
     )
 
@@ -295,7 +295,7 @@ class TestGenerateVariants:
         mock_get_available: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
-        variant_config: VariantConfig,
+        prompt_config: PromptConfig,
         mock_cli_tool: Mock,
     ) -> None:
         """Test successful generation of multiple variants."""
@@ -307,7 +307,7 @@ class TestGenerateVariants:
         ]
 
         result = variant_generator.generate_variants(
-            variant_config=variant_config,
+            prompt_config=prompt_config,
             base_prompt="Base prompt content",
             timeout=60,
         )
@@ -328,10 +328,10 @@ class TestGenerateVariants:
         mock_cli_tool: Mock,
     ) -> None:
         """Test generating variants with a specific CLI tool."""
-        config = VariantConfig(
+        config = PromptConfig(
             persona="researcher",
             action="research",
-            generate=["update"],
+            variants=["update"],
             cli_tool="claude",
         )
         mock_get_tool.return_value = mock_cli_tool
@@ -340,7 +340,7 @@ class TestGenerateVariants:
         mock_cli_tool.generate_variant.return_value = "Generated content"
 
         result = variant_generator.generate_variants(
-            variant_config=config,
+            prompt_config=config,
             base_prompt="Base prompt",
             timeout=60,
         )
@@ -359,10 +359,10 @@ class TestGenerateVariants:
         mock_cli_tool: Mock,
     ) -> None:
         """Test that missing templates are skipped with warning."""
-        config = VariantConfig(
+        config = PromptConfig(
             persona="researcher",
             action="research",
-            generate=["update", "missing", "refine"],
+            variants=["update", "missing", "refine"],
             cli_tool=None,
         )
         mock_get_available.return_value = [mock_cli_tool]
@@ -379,7 +379,7 @@ class TestGenerateVariants:
         ]
 
         result = variant_generator.generate_variants(
-            variant_config=config,
+            prompt_config=config,
             base_prompt="Base prompt",
             timeout=60,
         )
@@ -406,10 +406,10 @@ class TestGenerateVariants:
         mock_cli_tool: Mock,
     ) -> None:
         """Test that generation continues when a variant fails."""
-        config = VariantConfig(
+        config = PromptConfig(
             persona="researcher",
             action="research",
-            generate=["update", "failing", "refine"],
+            variants=["update", "failing", "refine"],
             cli_tool=None,
         )
         mock_get_available.return_value = [mock_cli_tool]
@@ -423,7 +423,7 @@ class TestGenerateVariants:
         ]
 
         result = variant_generator.generate_variants(
-            variant_config=config,
+            prompt_config=config,
             base_prompt="Base prompt",
             timeout=60,
         )
@@ -447,7 +447,7 @@ class TestGenerateVariants:
         mock_get_available: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
-        variant_config: VariantConfig,
+        prompt_config: PromptConfig,
         mock_cli_tool: Mock,
     ) -> None:
         """Test that successful variant generation is logged."""
@@ -456,7 +456,7 @@ class TestGenerateVariants:
         mock_cli_tool.generate_variant.return_value = "Generated content"
 
         variant_generator.generate_variants(
-            variant_config=variant_config,
+            prompt_config=prompt_config,
             base_prompt="Base prompt",
             timeout=60,
         )
@@ -475,17 +475,17 @@ class TestGenerateVariants:
         mock_cli_tool: Mock,
     ) -> None:
         """Test generating with empty variant list returns empty dict."""
-        # This shouldn't happen due to VariantConfig validation, but test anyway
-        config = VariantConfig.__new__(VariantConfig)
+        # This shouldn't happen due to PromptConfig validation, but test anyway
+        config = PromptConfig.__new__(PromptConfig)
         object.__setattr__(config, "persona", "researcher")
         object.__setattr__(config, "action", "research")
-        object.__setattr__(config, "generate", [])
+        object.__setattr__(config, "variants", [])
         object.__setattr__(config, "cli_tool", None)
 
         mock_get_available.return_value = [mock_cli_tool]
 
         result = variant_generator.generate_variants(
-            variant_config=config,
+            prompt_config=config,
             base_prompt="Base prompt",
             timeout=60,
         )
@@ -498,7 +498,7 @@ class TestGenerateVariants:
         mock_get_available: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
-        variant_config: VariantConfig,
+        prompt_config: PromptConfig,
         mock_cli_tool: Mock,
     ) -> None:
         """Test that custom timeout is passed to CLI tool."""
@@ -507,7 +507,7 @@ class TestGenerateVariants:
         mock_cli_tool.generate_variant.return_value = "Generated content"
 
         variant_generator.generate_variants(
-            variant_config=variant_config,
+            prompt_config=prompt_config,
             base_prompt="Base prompt",
             timeout=120,
         )

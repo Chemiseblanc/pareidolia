@@ -236,12 +236,12 @@ def test_init_creates_valid_parseable_config(tmp_path: Path) -> None:
 
     # Verify expected default values
     assert config.root == tmp_path / "pareidolia"
-    assert config.export.tool == "standard"
-    assert config.export.output_dir == tmp_path / "prompts"
+    assert config.generate.tool == "standard"
+    assert config.generate.output_dir == tmp_path / "prompts"
 
     # Verify structure
-    assert hasattr(config, "export")
-    assert hasattr(config, "variants")
+    assert hasattr(config, "generate")
+    assert hasattr(config, "prompts")
 
 
 def test_init_config_file_content(tmp_path: Path) -> None:
@@ -256,7 +256,7 @@ def test_init_config_file_content(tmp_path: Path) -> None:
 
     # Verify it's valid TOML format
     assert "[pareidolia]" in content
-    assert "[export]" in content
+    assert "[generate]" in content
 
     # Verify required fields are present
     assert "root" in content

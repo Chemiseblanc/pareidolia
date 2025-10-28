@@ -27,12 +27,12 @@ class TestCreateConfigFile:
 
         # Verify expected sections exist
         assert "pareidolia" in config_data, "Should have [pareidolia] section"
-        assert "export" in config_data, "Should have [export] section"
+        assert "generate" in config_data, "Should have [generate] section"
 
         # Verify expected default values
         assert config_data["pareidolia"]["root"] == "pareidolia"
-        assert config_data["export"]["tool"] == "standard"
-        assert config_data["export"]["output_dir"] == "prompts"
+        assert config_data["generate"]["tool"] == "standard"
+        assert config_data["generate"]["output_dir"] == "prompts"
 
     def test_create_config_file_raises_error_if_exists_without_overwrite(
         self, tmp_path: Path
@@ -324,7 +324,7 @@ class TestFullInitializationWorkflow:
             config_data = tomllib.load(f)
 
         assert config_data["pareidolia"]["root"] == "pareidolia"
-        assert config_data["export"]["output_dir"] == "prompts"
+        assert config_data["generate"]["output_dir"] == "prompts"
 
         # Verify all expected files exist
         expected_files = [

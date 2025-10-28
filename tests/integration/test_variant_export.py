@@ -4,8 +4,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from pareidolia.core.config import ExportConfig, PareidoliaConfig, VariantConfig
-from pareidolia.generators.exporter import Exporter
+from pareidolia.core.config import GenerateConfig, PareidoliaConfig, PromptConfig
+from pareidolia.generators.generator import Generator
 
 
 @pytest.fixture
@@ -52,30 +52,30 @@ def temp_output_dir(tmp_path):
 @pytest.fixture
 def config_with_variants(temp_project_dir, temp_output_dir):
     """Create configuration with variants enabled."""
-    export_config = ExportConfig(
+    generate_config = GenerateConfig(
         tool="copilot",
         library=None,
         output_dir=temp_output_dir,
     )
 
-    variant_config = VariantConfig(
+    prompt_config = PromptConfig(
         persona="researcher",
         action="research",
-        generate=["update", "refine", "summarize"],
+        variants=["update", "refine", "summarize"],
         cli_tool=None,
     )
 
     return PareidoliaConfig(
         root=temp_project_dir,
-        export=export_config,
-        variants=variant_config,
+        generate=generate_config,
+        prompts=prompt_config,
     )
 
 
 @pytest.fixture
 def config_without_variants(temp_project_dir, temp_output_dir):
     """Create configuration without variants."""
-    export_config = ExportConfig(
+    generate_config = GenerateConfig(
         tool="copilot",
         library=None,
         output_dir=temp_output_dir,
@@ -83,8 +83,8 @@ def config_without_variants(temp_project_dir, temp_output_dir):
 
     return PareidoliaConfig(
         root=temp_project_dir,
-        export=export_config,
-        variants=None,
+        generate=generate_config,
+        prompts=None,
     )
 
 
@@ -109,8 +109,8 @@ def test_export_with_variants_generates_all_files(
         "pareidolia.generators.variants.get_available_tools",
         return_value=[mock_cli_tool],
     ):
-        exporter = Exporter(config_with_variants)
-        result = exporter.export_action(
+        generator = Generator(config_with_variants)
+        result = generator.generate_action(
             action_name="research",
             persona_name="researcher",
         )
@@ -139,8 +139,8 @@ def test_export_without_variants_skips_generation(
     config_without_variants, temp_output_dir
 ):
     """Test that export without variants only generates base prompt."""
-    exporter = Exporter(config_without_variants)
-    result = exporter.export_action(
+    generator = Generator(config_without_variants)
+    result = generator.generate_action(
         action_name="research",
         persona_name="researcher",
     )
@@ -177,16 +177,16 @@ def test_export_variants_only_for_matching_action(
         "pareidolia.generators.variants.get_available_tools",
         return_value=[mock_cli_tool],
     ):
-        exporter = Exporter(config_with_variants)
+        generator = Generator(config_with_variants)
 
         # Export the matching action
-        result_match = exporter.export_action(
+        result_match = generator.generate_action(
             action_name="research",
             persona_name="researcher",
         )
 
         # Export the non-matching action
-        result_no_match = exporter.export_action(
+        result_no_match = generator.generate_action(
             action_name="analyze",
             persona_name="researcher",
         )
@@ -212,8 +212,8 @@ def test_variant_naming_follows_verb_noun_pattern(
         "pareidolia.generators.variants.get_available_tools",
         return_value=[mock_cli_tool],
     ):
-        exporter = Exporter(config_with_variants)
-        result = exporter.export_action(
+        generator = Generator(config_with_variants)
+        result = generator.generate_action(
             action_name="research",
             persona_name="researcher",
         )
@@ -248,8 +248,8 @@ def test_export_continues_on_variant_error(
         "pareidolia.generators.variants.get_available_tools",
         return_value=[mock_cli_tool],
     ):
-        exporter = Exporter(config_with_variants)
-        result = exporter.export_action(
+        generator = Generator(config_with_variants)
+        result = generator.generate_action(
             action_name="research",
             persona_name="researcher",
         )
@@ -285,8 +285,8 @@ def test_export_all_generates_variants_for_matching_actions(
         "pareidolia.generators.variants.get_available_tools",
         return_value=[mock_cli_tool],
     ):
-        exporter = Exporter(config_with_variants)
-        result = exporter.export_all(persona_name="researcher")
+        generator = Generator(config_with_variants)
+        result = generator.generate_all(persona_name="researcher")
 
     # Should succeed
     assert result.success
@@ -318,8 +318,8 @@ def test_variant_content_uses_base_prompt(
         "pareidolia.generators.variants.get_available_tools",
         return_value=[mock_cli_tool],
     ):
-        exporter = Exporter(config_with_variants)
-        result = exporter.export_action(
+        generator = Generator(config_with_variants)
+        result = generator.generate_action(
             action_name="research",
             persona_name="researcher",
         )
@@ -354,8 +354,8 @@ def test_missing_variant_template_does_not_fail_export(
         "pareidolia.generators.variants.get_available_tools",
         return_value=[mock_cli_tool],
     ):
-        exporter = Exporter(config_with_variants)
-        result = exporter.export_action(
+        generator = Generator(config_with_variants)
+        result = generator.generate_action(
             action_name="research",
             persona_name="researcher",
         )
@@ -376,23 +376,23 @@ def test_missing_variant_template_does_not_fail_export(
 def test_variant_generation_with_library_prefix(temp_project_dir, temp_output_dir):
     """Test that variant files use the correct naming when library prefix is present."""
     # Create config with library
-    export_config = ExportConfig(
+    generate_config = GenerateConfig(
         tool="copilot",
         library="mylib",
         output_dir=temp_output_dir,
     )
 
-    variant_config = VariantConfig(
+    prompt_config = PromptConfig(
         persona="researcher",
         action="research",
-        generate=["update"],
+        variants=["update"],
         cli_tool=None,
     )
 
     config = PareidoliaConfig(
         root=temp_project_dir,
-        export=export_config,
-        variants=variant_config,
+        generate=generate_config,
+        prompts=prompt_config,
     )
 
     mock_tool = Mock()
@@ -404,8 +404,8 @@ def test_variant_generation_with_library_prefix(temp_project_dir, temp_output_di
         "pareidolia.generators.variants.get_available_tools",
         return_value=[mock_tool],
     ):
-        exporter = Exporter(config)
-        result = exporter.export_action(
+        generator = Generator(config)
+        result = generator.generate_action(
             action_name="research",
             persona_name="researcher",
         )

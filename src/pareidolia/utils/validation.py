@@ -106,24 +106,24 @@ def validate_config_schema(config: dict[str, Any]) -> None:
         if "root" in pareidolia and not isinstance(pareidolia["root"], str):
             raise ValidationError("pareidolia.root must be a string")
 
-    # Check for export section
-    if "export" in config:
-        export = config["export"]
-        if not isinstance(export, dict):
-            raise ValidationError("export section must be a dictionary")
+    # Check for generate section
+    if "generate" in config:
+        generate = config["generate"]
+        if not isinstance(generate, dict):
+            raise ValidationError("generate section must be a dictionary")
 
         # Validate tool if present
-        if "tool" in export and not isinstance(export["tool"], str):
-            raise ValidationError("export.tool must be a string")
+        if "tool" in generate and not isinstance(generate["tool"], str):
+            raise ValidationError("generate.tool must be a string")
 
         # Validate library if present
         if (
-            "library" in export
-            and export["library"] is not None
-            and not isinstance(export["library"], str)
+            "library" in generate
+            and generate["library"] is not None
+            and not isinstance(generate["library"], str)
         ):
-            raise ValidationError("export.library must be a string or null")
+            raise ValidationError("generate.library must be a string or null")
 
         # Validate output_dir if present
-        if "output_dir" in export and not isinstance(export["output_dir"], str):
-            raise ValidationError("export.output_dir must be a string")
+        if "output_dir" in generate and not isinstance(generate["output_dir"], str):
+            raise ValidationError("generate.output_dir must be a string")
