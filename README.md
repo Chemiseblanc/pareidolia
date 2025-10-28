@@ -188,6 +188,113 @@ Variant templates are Jinja2 templates that receive three variables:
 **Example variant template (`variant/update.md.j2`):**
 
 ```markdown
+## Tool-Specific Metadata and Frontmatter
+
+Pareidolia supports attaching metadata to prompts for generating tool-specific frontmatter. This allows you to specify model preferences, chat modes, descriptions, and other configuration in the generated prompt files.
+
+### Configuration
+
+Add a `[prompts.metadata]` section to your configuration file:
+
+```toml
+[prompts]
+persona = "researcher"
+action = "analyze"
+variants = ["expand", "refine"]
+
+[prompts.metadata]
+description = "Research analysis assistant"
+model = "claude-3.5-sonnet"
+chat_mode = "extended"
+tags = ["analysis", "research"]
+temperature = 0.7
+```
+
+### Accessing Metadata in Templates
+
+Templates can access metadata through the `{{ metadata }}` variable, along with `{{ tool }}` and `{{ library }}`:
+
+```jinja2
+{%- if metadata -%}
+---
+{%- if metadata.description %}
+description: {{ metadata.description }}
+{%- endif %}
+{%- if metadata.model %}
+model: {{ metadata.model }}
+{%- endif %}
+{%- if tool %}
+tool: {{ tool }}
+{%- endif %}
+---
+
+{% endif -%}
+# {{ persona }}
+
+Your template content here...
+```
+
+### Tool-Specific Examples
+
+**GitHub Copilot:**
+```toml
+[prompts.metadata]
+description = "Code review assistant"
+tags = ["code-review", "best-practices"]
+```
+
+Generated frontmatter:
+```yaml
+---
+description: Code review assistant
+tags: ["code-review", "best-practices"]
+---
+```
+
+**Claude Code:**
+```toml
+[prompts.metadata]
+description = "Research analysis assistant"
+model = "claude-3.5-sonnet"
+chat_mode = "extended"
+temperature = 0.7
+```
+
+Generated frontmatter:
+```yaml
+---
+description: Research analysis assistant
+model: claude-3.5-sonnet
+chat_mode: extended
+temperature: 0.7
+---
+```
+
+**Standard/Generic:**
+```toml
+[prompts.metadata]
+description = "General purpose assistant"
+version = "1.0"
+author = "Your Name"
+```
+
+### Common Metadata Fields
+
+The following fields are commonly used across different tools:
+
+| Field | Type | Description | Tools |
+|-------|------|-------------|-------|
+| `description` | string | Brief description of prompt's purpose | All |
+| `model` | string | Preferred AI model (e.g., "claude-3.5-sonnet") | Claude, OpenAI |
+| `chat_mode` | string | Chat mode setting (e.g., "extended", "concise") | Claude Code |
+| `tags` | list | Categorization tags | Copilot, general |
+| `temperature` | number | Sampling temperature (0.0-1.0) | Most LLM tools |
+| `max_tokens` | number | Maximum response length | Most LLM tools |
+| `version` | string | Prompt version identifier | General |
+| `author` | string | Prompt author | General |
+
+You can use any metadata fields that make sense for your use case. The template determines which fields appear in the generated frontmatter.
+
 ## Variant Generation
 
 Pareidolia can automatically generate prompt variants using AI CLI tools. Variants are specialized versions of a base prompt:
