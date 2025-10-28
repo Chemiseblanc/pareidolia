@@ -68,6 +68,7 @@ def config_with_variants(temp_project_dir, temp_output_dir):
     return PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -84,6 +85,7 @@ def config_without_variants(temp_project_dir, temp_output_dir):
     return PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=None,
     )
 
@@ -392,6 +394,7 @@ def test_variant_generation_with_library_prefix(temp_project_dir, temp_output_di
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -457,6 +460,7 @@ Library: {{ library }}
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 

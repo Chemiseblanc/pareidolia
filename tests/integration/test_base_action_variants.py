@@ -74,6 +74,7 @@ def test_variant_generated_from_action_template(temp_project_dir, temp_output_di
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -127,6 +128,7 @@ def test_variant_falls_back_to_ai_when_no_action_template(
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -191,6 +193,7 @@ def test_mixed_direct_and_ai_variants(temp_project_dir, temp_output_dir):
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -259,6 +262,7 @@ def test_all_variants_from_action_templates(temp_project_dir, temp_output_dir):
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -309,6 +313,7 @@ def test_direct_variant_with_library_prefix(temp_project_dir, temp_output_dir):
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -359,6 +364,7 @@ def test_generate_all_with_mixed_variants(temp_project_dir, temp_output_dir):
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -436,6 +442,7 @@ def test_direct_variant_with_examples(temp_project_dir, temp_output_dir):
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -482,6 +489,7 @@ def test_ai_fallback_continues_on_cli_tool_error(temp_project_dir, temp_output_d
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 
@@ -544,6 +552,7 @@ def test_logging_indicates_generation_strategy(
     config = PareidoliaConfig(
         root=temp_project_dir,
         generate=generate_config,
+        metadata={},
         prompts=prompt_config,
     )
 

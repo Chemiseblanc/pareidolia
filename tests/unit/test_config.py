@@ -22,6 +22,7 @@ class TestPareidoliaConfigFromDict:
         assert config.root == Path("/project/pareidolia")
         assert config.generate.tool == "standard"
         assert config.generate.output_dir == Path("/project/prompts")
+        assert config.metadata == {}
         assert config.prompts is None
 
     def test_config_parses_prompts_section(self) -> None:
@@ -322,6 +323,215 @@ class TestPareidoliaConfigMetadata:
         assert isinstance(config.prompts.metadata, dict)
 
 
+class TestPareidoliaConfigGlobalMetadata:
+    """Tests for global metadata support in configuration."""
+
+    def test_config_parses_global_metadata_section(self) -> None:
+        """Test parsing configuration with global [metadata] section."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "metadata": {
+                "model": "claude-3.5-sonnet",
+                "temperature": 0.7,
+                "tags": ["default", "global"],
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.metadata is not None
+        assert config.metadata["model"] == "claude-3.5-sonnet"
+        assert config.metadata["temperature"] == 0.7
+        assert config.metadata["tags"] == ["default", "global"]
+
+    def test_config_handles_missing_global_metadata_section(self) -> None:
+        """Test that global metadata section is optional and defaults to empty dict."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.metadata == {}
+        assert isinstance(config.metadata, dict)
+
+    def test_config_merges_global_and_prompt_metadata(self) -> None:
+        """Test that global and per-prompt metadata are merged correctly."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "metadata": {
+                "model": "claude-3.5-sonnet",
+                "temperature": 0.7,
+                "mode": "default",
+            },
+            "prompts": {
+                "persona": "researcher",
+                "action": "analyze",
+                "variants": ["update"],
+                "metadata": {
+                    "mode": "agent",  # Override global
+                    "description": "Conducts and reports research findings",
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        # Global metadata should be accessible
+        assert config.metadata["model"] == "claude-3.5-sonnet"
+        assert config.metadata["temperature"] == 0.7
+        assert config.metadata["mode"] == "default"
+
+        # Prompt metadata should have merged values
+        assert config.prompts is not None
+        assert config.prompts.metadata["model"] == "claude-3.5-sonnet"  # From global
+        assert config.prompts.metadata["temperature"] == 0.7  # From global
+        assert config.prompts.metadata["mode"] == "agent"  # Override from prompt
+        assert (
+            config.prompts.metadata["description"]
+            == "Conducts and reports research findings"
+        )  # From prompt
+
+    def test_config_prompt_metadata_overrides_global(self) -> None:
+        """Test that per-prompt metadata overrides global metadata."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "metadata": {
+                "model": "claude-3.5-sonnet",
+                "description": "Default description",
+                "temperature": 0.5,
+            },
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                "metadata": {
+                    "model": "Claude Sonnet 4",  # Override
+                    "description": "Conducts and reports research findings",  # Override
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        assert config.prompts.metadata["model"] == "Claude Sonnet 4"
+        assert (
+            config.prompts.metadata["description"]
+            == "Conducts and reports research findings"
+        )
+        assert config.prompts.metadata["temperature"] == 0.5  # From global
+
+    def test_config_only_global_metadata_no_prompt_metadata(self) -> None:
+        """Test configuration with only global metadata, no per-prompt metadata."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "metadata": {
+                "model": "claude-3.5-sonnet",
+                "temperature": 0.7,
+            },
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                # No metadata key
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        # Global metadata is set
+        assert config.metadata["model"] == "claude-3.5-sonnet"
+        assert config.metadata["temperature"] == 0.7
+
+        # Prompt should inherit global metadata
+        assert config.prompts is not None
+        assert config.prompts.metadata["model"] == "claude-3.5-sonnet"
+        assert config.prompts.metadata["temperature"] == 0.7
+
+    def test_config_only_prompt_metadata_no_global_metadata(self) -> None:
+        """Test configuration with only per-prompt metadata, no global metadata."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            # No metadata section
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                "metadata": {
+                    "mode": "agent",
+                    "description": "Research prompt",
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        # Global metadata should be empty
+        assert config.metadata == {}
+
+        # Prompt metadata should only contain prompt-specific values
+        assert config.prompts is not None
+        assert config.prompts.metadata["mode"] == "agent"
+        assert config.prompts.metadata["description"] == "Research prompt"
+        assert len(config.prompts.metadata) == 2
+
+    def test_config_global_metadata_with_nested_structures(self) -> None:
+        """Test global metadata with nested dictionaries and arrays."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "metadata": {
+                "model": "claude-3.5-sonnet",
+                "settings": {
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                },
+                "tags": ["global", "default"],
+            },
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                "metadata": {
+                    "description": "Specific prompt",
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        # Global nested structures should be inherited
+        assert config.prompts.metadata["model"] == "claude-3.5-sonnet"
+        assert config.prompts.metadata["settings"]["temperature"] == 0.7
+        assert config.prompts.metadata["settings"]["max_tokens"] == 4096
+        assert config.prompts.metadata["tags"] == ["global", "default"]
+        # Prompt-specific metadata should be present
+        assert config.prompts.metadata["description"] == "Specific prompt"
+
+    def test_config_invalid_global_metadata_type(self) -> None:
+        """Test that invalid global metadata type raises error."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "metadata": "not a dictionary",  # Invalid type
+        }
+        with pytest.raises(ConfigurationError, match="metadata section must be"):
+            PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+    def test_config_empty_global_metadata_section(self) -> None:
+        """Test that empty global metadata section results in empty dict."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "metadata": {},
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.metadata == {}
+        assert isinstance(config.metadata, dict)
+
+
 class TestPareidoliaConfigFromDefaults:
     """Tests for PareidoliaConfig.from_defaults method."""
 
@@ -331,6 +541,7 @@ class TestPareidoliaConfigFromDefaults:
 
         assert config.root == Path("/project/pareidolia")
         assert config.generate.tool == "standard"
+        assert config.metadata == {}
         assert config.prompts is None
 
 

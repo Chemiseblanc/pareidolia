@@ -99,12 +99,24 @@ tool = "copilot"             # or "claude-code", etc.
 library = "promptlib"        # Optional: enables library format when set
 output_dir = "prompts"       # Where to write generated prompts
 
+# Global metadata - applies to all prompts by default
+[metadata]
+model = "claude-3.5-sonnet"
+temperature = 0.7
+tags = ["analysis", "research"]
+
 [prompts]
 # Optional: AI-powered variant generation (see Variant Generation section)
 persona = "researcher"
 action = "research"
 variants = ["update", "refine", "summarize"]
 cli_tool = "claude"          # Optional: auto-detects if omitted
+
+# Per-prompt metadata - overrides global metadata
+[prompts.metadata]
+mode = "agent"
+description = "Conducts and reports research findings"
+# Inherits model, temperature, and tags from global [metadata]
 ```
 
 ## Output Formats
@@ -190,11 +202,25 @@ Variant templates are Jinja2 templates that receive three variables:
 ```markdown
 ## Tool-Specific Metadata and Frontmatter
 
-Pareidolia supports attaching metadata to prompts for generating tool-specific frontmatter. This allows you to specify model preferences, chat modes, descriptions, and other configuration in the generated prompt files.
+Pareidolia supports attaching metadata to prompts for generating tool-specific frontmatter. Metadata can be defined globally (applying to all prompts) or per-prompt (overriding global settings).
 
 ### Configuration
 
-Add a `[prompts.metadata]` section to your configuration file:
+#### Global Metadata
+
+Define default metadata for all prompts in the `[metadata]` section:
+
+```toml
+[metadata]
+model = "claude-3.5-sonnet"
+temperature = 0.7
+max_tokens = 4096
+tags = ["default", "analysis"]
+```
+
+#### Per-Prompt Metadata
+
+Override or extend global metadata for specific prompts using `[prompts.metadata]`:
 
 ```toml
 [prompts]
@@ -203,16 +229,43 @@ action = "analyze"
 variants = ["expand", "refine"]
 
 [prompts.metadata]
+mode = "agent"
+model = "Claude Sonnet 4"  # Overrides global model
 description = "Research analysis assistant"
+# Inherits temperature, max_tokens, and tags from global [metadata]
+```
+
+#### Merging Behavior
+
+- Global metadata applies to all prompts by default
+- Per-prompt metadata overrides global values for the same keys
+- Values not specified in per-prompt metadata are inherited from global metadata
+- Both sections are optional and default to empty if omitted
+
+**Example:**
+
+```toml
+# Global defaults
+[metadata]
 model = "claude-3.5-sonnet"
-chat_mode = "extended"
-tags = ["analysis", "research"]
 temperature = 0.7
+max_tokens = 4096
+
+# Per-prompt overrides
+[prompts.metadata]
+mode = "agent"
+model = "Claude Sonnet 4"
+
+# Result: prompts will have:
+# - model: "Claude Sonnet 4" (overridden)
+# - temperature: 0.7 (inherited)
+# - max_tokens: 4096 (inherited)
+# - mode: "agent" (added)
 ```
 
 ### Accessing Metadata in Templates
 
-Templates can access metadata through the `{{ metadata }}` variable, along with `{{ tool }}` and `{{ library }}`:
+Templates can access metadata through the `{{ metadata }}` variable, along with `{{ tool }}` and `{{ library }}`. The metadata available in templates is the merged result of global and per-prompt metadata:
 
 ```jinja2
 {%- if metadata -%}
@@ -222,6 +275,9 @@ description: {{ metadata.description }}
 {%- endif %}
 {%- if metadata.model %}
 model: {{ metadata.model }}
+{%- endif %}
+{%- if metadata.mode %}
+mode: {{ metadata.mode }}
 {%- endif %}
 {%- if tool %}
 tool: {{ tool }}
@@ -236,11 +292,25 @@ Your template content here...
 
 ### Tool-Specific Examples
 
-**GitHub Copilot:**
+**Global + Per-Prompt Configuration:**
+
 ```toml
+# Global defaults for all prompts
+[metadata]
+temperature = 0.7
+max_tokens = 4096
+tags = ["production", "v1"]
+
+# GitHub Copilot prompt
+[prompts]
+persona = "reviewer"
+action = "review"
+variants = ["refine"]
+
 [prompts.metadata]
 description = "Code review assistant"
-tags = ["code-review", "best-practices"]
+tags = ["code-review", "best-practices"]  # Overrides global tags
+# Inherits temperature and max_tokens
 ```
 
 Generated frontmatter:
@@ -248,16 +318,22 @@ Generated frontmatter:
 ---
 description: Code review assistant
 tags: ["code-review", "best-practices"]
+temperature: 0.7
+max_tokens: 4096
 ---
 ```
 
-**Claude Code:**
+**Claude Code with Global Defaults:**
+
 ```toml
+[metadata]
+model = "claude-3.5-sonnet"
+temperature = 0.7
+
 [prompts.metadata]
 description = "Research analysis assistant"
-model = "claude-3.5-sonnet"
 chat_mode = "extended"
-temperature = 0.7
+# Inherits model and temperature from global
 ```
 
 Generated frontmatter:
@@ -270,12 +346,20 @@ temperature: 0.7
 ---
 ```
 
-**Standard/Generic:**
+**Using Only Global Metadata:**
+
 ```toml
-[prompts.metadata]
+[metadata]
 description = "General purpose assistant"
 version = "1.0"
 author = "Your Name"
+model = "claude-3.5-sonnet"
+
+[prompts]
+persona = "assistant"
+action = "help"
+variants = []
+# No [prompts.metadata] - uses global metadata only
 ```
 
 ### Common Metadata Fields

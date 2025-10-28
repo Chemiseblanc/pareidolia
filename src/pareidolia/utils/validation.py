@@ -127,3 +127,9 @@ def validate_config_schema(config: dict[str, Any]) -> None:
         # Validate output_dir if present
         if "output_dir" in generate and not isinstance(generate["output_dir"], str):
             raise ValidationError("generate.output_dir must be a string")
+
+    # Check for metadata section (optional, global)
+    if "metadata" in config:
+        metadata = config["metadata"]
+        if not isinstance(metadata, dict):
+            raise ValidationError("metadata section must be a dictionary")

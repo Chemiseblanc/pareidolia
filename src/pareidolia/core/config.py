@@ -21,11 +21,13 @@ class PareidoliaConfig:
     Attributes:
         root: Root directory containing persona/action/example folders
         generate: Generate configuration
+        metadata: Global metadata dictionary (merged with per-prompt metadata)
         prompts: Optional prompt variant generation configuration
     """
 
     root: Path
     generate: GenerateConfig
+    metadata: dict[str, Any]
     prompts: PromptConfig | None = None
 
     @classmethod
@@ -96,27 +98,40 @@ class PareidoliaConfig:
         except ValueError as e:
             raise ConfigurationError(f"Invalid generate configuration: {e}") from e
 
+        # Parse global metadata section (optional)
+        global_metadata = config_data.get("metadata", {})
+        if not isinstance(global_metadata, dict):
+            raise ConfigurationError("metadata section must be a dictionary")
+
         # Parse prompts section (optional)
         prompts_data = config_data.get("prompts")
         prompts: PromptConfig | None = None
         if prompts_data:
             try:
-                # Extract metadata if present, default to empty dict
-                metadata = prompts_data.get("metadata", {})
+                # Extract per-prompt metadata, default to empty dict
+                prompt_metadata = prompts_data.get("metadata", {})
+
+                # Merge global and per-prompt metadata (per-prompt overrides global)
+                merged_metadata = {**global_metadata, **prompt_metadata}
 
                 prompts = PromptConfig(
                     persona=prompts_data["persona"],
                     action=prompts_data["action"],
                     variants=prompts_data["variants"],
                     cli_tool=prompts_data.get("cli_tool"),
-                    metadata=metadata,
+                    metadata=merged_metadata,
                 )
             except (KeyError, ValueError, ValidationError) as e:
                 raise ConfigurationError(
                     f"Invalid prompts configuration: {e}"
                 ) from e
 
-        return cls(root=root, generate=generate, prompts=prompts)
+        return cls(
+            root=root,
+            generate=generate,
+            metadata=global_metadata,
+            prompts=prompts,
+        )
 
     @classmethod
     def from_defaults(
@@ -144,7 +159,7 @@ class PareidoliaConfig:
         output_path = project_root / output_dir
         generate = GenerateConfig(tool=tool, library=library, output_dir=output_path)
 
-        return cls(root=root, generate=generate, prompts=None)
+        return cls(root=root, generate=generate, metadata={}, prompts=None)
 
     def merge_overrides(
         self,
@@ -175,5 +190,8 @@ class PareidoliaConfig:
         )
 
         return PareidoliaConfig(
-            root=self.root, generate=generate, prompts=self.prompts
+            root=self.root,
+            generate=generate,
+            metadata=self.metadata,
+            prompts=self.prompts,
         )
