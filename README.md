@@ -507,6 +507,131 @@ action = "research"
 variants = ["update", "refine"]
 cli_tool = "claude"
 ```
+
+## MCP Server
+
+Pareidolia includes an MCP (Model Context Protocol) server that exposes prompts to AI assistants and tools through a standardized protocol. This enables real-time prompt generation and discovery within AI development environments.
+
+### Installation
+
+The MCP server requires the `fastmcp` package, which is automatically installed with Pareidolia:
+
+```bash
+uv sync
+```
+
+### Usage
+
+The MCP server can run in two modes:
+
+**CLI Mode** (for testing and debugging):
+```bash
+pareidolia-mcp --config-dir ./my-project
+```
+
+**MCP Mode** (for integration with AI tools):
+```bash
+pareidolia-mcp --mcp --config-dir ./my-project
+```
+
+If no `--config-dir` is specified, the current directory is used.
+
+### Available MCP Tools
+
+The server exposes the following tools through the MCP protocol:
+
+1. **list_personas**: List all available personas
+   - Returns persona names and content previews
+   - No arguments required
+
+2. **list_actions**: List available actions for a persona
+   - Arguments: `persona_name` (string)
+   - Returns action names and template previews
+
+3. **list_examples**: List all available examples
+   - Returns example names, content previews, and template status
+   - No arguments required
+
+4. **generate_prompt**: Generate a complete prompt
+   - Arguments:
+     - `action` (string, required): Action name
+     - `persona` (string, required): Persona name
+     - `examples` (list[str], optional): Example names to include
+     - `metadata` (dict, optional): Metadata for prompt frontmatter
+   - Returns: Generated prompt content
+
+5. **generate_with_sampler**: Generate with AI enhancement support
+   - Same arguments as `generate_prompt`
+   - Supports FastMCP sampler feature for AI-enhanced generation
+   - Returns: Generated prompt content
+
+6. **generate_variants**: Generate prompt variants
+   - Arguments:
+     - `action` (string, required): Base action name
+     - `persona` (string, required): Persona name
+     - `variants` (list[str], required): Variant names (e.g., ["update", "refine"])
+     - `examples` (list[str], optional): Example names to include
+     - `metadata` (dict, optional): Metadata for prompts
+     - `cli_tool` (string, optional): Specific CLI tool for AI generation
+     - `timeout` (int, optional, default=60): Generation timeout in seconds
+   - Returns: Dictionary mapping variant names to generated content
+
+7. **compose_prompt**: Compose a prompt from components
+   - Alias for `generate_prompt` with semantic emphasis on composition
+   - Same arguments and return value as `generate_prompt`
+
+### Configuration
+
+The MCP server uses the same `.pareidolia.toml` configuration file as the main CLI tool. No additional configuration is required.
+
+### Example: Using with AI Tools
+
+Configure your AI tool to use the MCP server:
+
+```json
+{
+  "mcpServers": {
+    "pareidolia": {
+      "command": "pareidolia-mcp",
+      "args": ["--mcp", "--config-dir", "/path/to/your/project"]
+    }
+  }
+}
+```
+
+Then use MCP tools within your AI assistant:
+
+```
+# List available personas
+use_mcp_tool("pareidolia", "list_personas")
+
+# Generate a prompt
+use_mcp_tool("pareidolia", "generate_prompt", {
+  "action": "research",
+  "persona": "researcher",
+  "metadata": {
+    "description": "Research prompt for analyzing papers",
+    "model": "claude-sonnet-4"
+  }
+})
+
+# Generate variants
+use_mcp_tool("pareidolia", "generate_variants", {
+  "action": "research",
+  "persona": "researcher",
+  "variants": ["update", "refine", "summarize"]
+})
+```
+
+### Sampler Support
+
+The `generate_with_sampler` tool supports FastMCP's sampler feature, allowing AI-enhanced prompt generation. When a sampler context is provided by the MCP client, it can be used for advanced generation scenarios.
+
+This feature is particularly useful for:
+- Dynamic prompt adaptation based on context
+- AI-powered prompt refinement
+- Interactive prompt development workflows
+
 ## Contributing
 
 1. Create a feature branch from `master`
