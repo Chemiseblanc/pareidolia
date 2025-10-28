@@ -420,3 +420,66 @@ def test_variant_generation_with_library_prefix(temp_project_dir, temp_output_di
     # (library prefix applied to full action name)
     variant_file = temp_output_dir / "mylib.update-research.prompt.md"
     assert variant_file.exists()
+
+
+def test_variant_generation_with_metadata(
+    temp_project_dir, temp_output_dir, mock_cli_tool
+):
+    """Test that variant generation has access to metadata context."""
+    # Create variant template that uses metadata
+    variant_dir = temp_project_dir / "variant"
+    (variant_dir / "custom.md.j2").write_text(
+        """Transform to {{ variant_name }} variant for {{ action_name }}
+Tool: {{ tool }}
+Library: {{ library }}
+{% if metadata.description %}Description: {{ metadata.description }}{% endif %}
+{% if metadata.model %}Model: {{ metadata.model }}{% endif %}"""
+    )
+
+    # Create config with metadata
+    generate_config = GenerateConfig(
+        tool="copilot",
+        library="testlib",
+        output_dir=temp_output_dir,
+    )
+
+    prompt_config = PromptConfig(
+        persona="researcher",
+        action="research",
+        variants=["custom"],
+        cli_tool=None,
+        metadata={
+            "description": "Custom research tool",
+            "model": "claude-3.5-sonnet",
+        },
+    )
+
+    config = PareidoliaConfig(
+        root=temp_project_dir,
+        generate=generate_config,
+        prompts=prompt_config,
+    )
+
+    with patch(
+        "pareidolia.generators.generator.get_available_tools",
+        return_value=[mock_cli_tool],
+    ):
+        generator = Generator(config)
+        result = generator.generate_action(
+            action_name="research",
+            persona_name="researcher",
+        )
+
+    assert result.success
+
+    # Verify the mock was called with the rendered template that includes metadata
+    mock_cli_tool.generate_variant.assert_called_once()
+    call_args = mock_cli_tool.generate_variant.call_args
+    variant_prompt = call_args.kwargs["variant_prompt"]
+
+    # The rendered variant template should include metadata
+    assert "Tool: copilot" in variant_prompt
+    assert "Library: testlib" in variant_prompt
+    assert "Description: Custom research tool" in variant_prompt
+    assert "Model: claude-3.5-sonnet" in variant_prompt
+
