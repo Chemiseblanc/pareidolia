@@ -36,9 +36,7 @@ uv run pareidolia --help
 
 ## Quick Start
 
-### Initialize a New Project
-
-The fastest way to get started with Pareidolia is using the `init` command:
+### 1. Initialize a New Project
 
 ```bash
 # Initialize in the current directory
@@ -51,120 +49,7 @@ pareidolia init my-prompts
 pareidolia init --no-scaffold
 ```
 
-This creates:
-- `.pareidolia.toml` - Configuration file with documented defaults
-- `pareidolia/` - Root directory for your prompts
-  - `personas/` - Persona definition files
-  - `actions/` - Action template files (Jinja2)
-  - `examples/` - Example output files
-  - `templates/` - Reusable custom templates
-- `prompts/` - Output directory for generated prompts
-
-The `init` command also creates example files to demonstrate the structure:
-- `pareidolia/personas/researcher.md` - Example persona
-- `pareidolia/actions/analyze.md.j2` - Example action template
-- `pareidolia/examples/analysis-output.md` - Example output format
-- `pareidolia/templates/README.md` - Template usage guide
-
-After initialization, you can immediately try generating prompts:
-
-```bash
-pareidolia generate
-```
-
-This will create prompts in the `prompts/` directory using the example files.
-
-### Manual Setup
-
-If you prefer to set up your project manually, create the following structure:
-
-## Project Structure
-
-A Pareidolia project consists of:
-
-```
-your-project/
-├── pareidolia.toml           # Configuration file
-└── pareidolia/               # Default root (configurable)
-    ├── persona/              # Persona definitions
-    │   └── researcher.md
-    ├── action/               # Action templates (Jinja2)
-    │   ├── research.md.j2
-    │   ├── refine-research.md.jinja
-    │   └── update-research.md.jinja2
-    ├── example/              # Example outputs (optional Jinja2)
-    │   ├── report-format.md
-    │   └── output-style.md.j2
-    └── variant/              # Variant transformation templates (optional)
-        ├── update.md.j2
-        ├── refine.md.j2
-        ├── summarize.md.j2
-        └── expand.md.j2
-```
-
-### Configuration (`pareidolia.toml`)
-
-```toml
-[pareidolia]
-root = "pareidolia"  # Directory containing persona/action/example folders
-
-[generate]
-# Default generation settings (can be overridden via CLI)
-tool = "copilot"             # or "claude-code", etc.
-library = "promptlib"        # Optional: enables library format when set
-output_dir = "prompts"       # Where to write generated prompts
-
-[prompts]
-# Optional: AI-powered variant generation
-persona = "researcher"       # Persona to use as base
-action = "research"          # Action to use as base
-variants = ["update", "refine", "summarize"]  # List of variants to generate
-cli_tool = "claude"          # Optional: specific AI tool (auto-detects if omitted)
-```
-
-## Usage
-
-### Getting Started
-
-The recommended way to start a new project is with the `init` command:
-
-```bash
-pareidolia init
-```
-
-See the [Quick Start](#quick-start) section above for more details.
-
-### Manually Setting Up a Project
-
-1. Create the project structure:
-```bash
-mkdir -p pareidolia/{persona,action,example}
-```
-
-2. Create personas in `pareidolia/persona/`:
-```markdown
-<!-- pareidolia/persona/researcher.md -->
-You are an expert researcher with deep analytical skills...
-```
-
-3. Create action templates in `pareidolia/action/`:
-```markdown
-<!-- pareidolia/action/research.md.j2 -->
-{{ persona }}
-
-Your task is to research the following topic...
-```
-
-4. Add example outputs in `pareidolia/example/` (optional):
-```markdown
-<!-- pareidolia/example/report-format.md -->
-# Research Report Example
-...
-```
-
-### Generating Prompts
-
-Generate prompts using the configured settings:
+### 2. Generate Prompts
 
 ```bash
 # Use settings from pareidolia.toml
@@ -177,28 +62,76 @@ pareidolia generate --tool copilot --output-dir output/
 pareidolia generate --tool copilot --library promptlib
 ```
 
-### Output Examples
+## Project Structure
 
-**Standard format (no --library option):**
+The `init` command creates this structure:
+
 ```
-output/
+your-project/
+├── pareidolia.toml           # Configuration file
+├── pareidolia/               # Default root (configurable)
+│   ├── personas/             # Persona definitions
+│   │   └── researcher.md
+│   ├── actions/              # Action templates (Jinja2)
+│   │   └── analyze.md.j2
+│   ├── examples/             # Example outputs (optional Jinja2)
+│   │   └── analysis-output.md
+│   └── templates/            # Custom templates (optional)
+└── prompts/                  # Generated output directory
+```
+
+Optional directories for advanced features:
+```
+pareidolia/
+└── variant/                  # AI-powered variant templates
+    ├── update.md.j2
+    ├── refine.md.j2
+## Configuration
+
+Create a `pareidolia.toml` file (automatically created by `init`):
+
+```toml
+[pareidolia]
+root = "pareidolia"  # Directory containing persona/action/example folders
+
+[generate]
+tool = "copilot"             # or "claude-code", etc.
+library = "promptlib"        # Optional: enables library format when set
+output_dir = "prompts"       # Where to write generated prompts
+
+[prompts]
+# Optional: AI-powered variant generation (see Variant Generation section)
+persona = "researcher"
+action = "research"
+variants = ["update", "refine", "summarize"]
+cli_tool = "claude"          # Optional: auto-detects if omitted
+```
+
+## Output Formats
+
+**Standard format:**
+```
+prompts/
 ├── research.prompt.md
 ├── refine-research.prompt.md
 └── update-research.prompt.md
 ```
 
-**Library format with Claude Code (--tool claude-code --library promptlib):**
+**Library format (Claude Code):**
 ```
-output/
-└── promptlib/
-    ├── research.md
-    ├── refine-research.md
-    └── update-research.md
+prompts/promptlib/
+├── research.md
+├── refine-research.md
+└── update-research.md
 ```
 
-**Library format with GitHub Copilot (--tool copilot --library promptlib):**
+**Library format (GitHub Copilot):**
 ```
-output/
+prompts/
+├── promptlib.research.prompt.md
+├── promptlib.refine-research.prompt.md
+└── promptlib.update-research.prompt.md
+```put/
 ├── promptlib.research.prompt.md
 ├── promptlib.refine-research.prompt.md
 └── promptlib.update-research.prompt.md
@@ -255,33 +188,15 @@ Variant templates are Jinja2 templates that receive three variables:
 **Example variant template (`variant/update.md.j2`):**
 
 ```markdown
-You are transforming an existing prompt into an "update" variant.
+## Variant Generation
 
-The update variant should modify the original prompt to focus on updating
-or refreshing existing content rather than creating new content from scratch.
+Pareidolia can automatically generate prompt variants using AI CLI tools. Variants are specialized versions of a base prompt:
+- **update**: Refreshing or updating existing content
+- **refine**: Improving quality and polish
+- **summarize**: Condensing to essential points
+- **expand**: Elaborating with greater depth
 
-**Context:**
-- Persona: {{ persona_name }}
-- Action: {{ action_name }}
-- Variant: {{ variant_name }}
-
-**Transformation Instructions:**
-
-1. Keep the core purpose and tone of the original prompt
-2. Shift the focus to updating/refreshing existing material
-3. Add instructions for handling existing content
-4. Maintain the persona's voice and characteristics
-
-Transform the following prompt into an update variant:
-```
-
-The AI tool receives both the rendered variant template (with transformation instructions) and the base prompt, then generates the variant accordingly.
-
-**Default Templates:**
-
-Pareidolia includes example templates in `src/pareidolia/templates/defaults/variant/`:
-- `update.md.j2` - Instructions for update variants
-- `refine.md.j2` - Instructions for refine variants
+When you run `pareidolia generate`, variants are automatically created alongside the base prompt if the action matches your configuration.
 - `summarize.md.j2` - Instructions for summarize variants
 - `expand.md.j2` - Instructions for expand variants
 
@@ -301,60 +216,45 @@ Variant generation requires at least one AI CLI tool:
 **Auto-detection:** If you don't specify `cli_tool` in your config, Pareidolia will automatically use the first available tool from the list above.
 
 **Tool-specific:** To use a specific tool, set it in your config:
-```toml
-[prompts]
-cli_tool = "claude"  # Use Claude for variant generation
-```
+### Setting Up Variants
 
-### Generated Files and Naming
-
-Variants follow a **verb-noun** naming convention:
-
-**Without library:**
-```
-prompts/
-├── research.prompt.md           # Base prompt
-├── update-research.prompt.md    # Update variant
-├── refine-research.prompt.md    # Refine variant
-└── summarize-research.prompt.md # Summarize variant
-```
-
-**With library (Claude Code style):**
-```
-prompts/
-└── promptlib/
-    ├── research.md
-    ├── update-research.md
-    ├── refine-research.md
-    └── summarize-research.md
-```
-
-**With library (GitHub Copilot style):**
-```
-prompts/
-├── promptlib.research.prompt.md
-├── promptlib.update-research.prompt.md
-├── promptlib.refine-research.prompt.md
-└── promptlib.summarize-research.prompt.md
-```
-
-### Usage Example
-
-1. **Create variant templates:**
+1. **Copy default templates:**
 ```bash
 mkdir -p pareidolia/variant
 cp src/pareidolia/templates/defaults/variant/*.md.j2 pareidolia/variant/
 ```
 
-2. **Configure variants in `pareidolia.toml`:**
+2. **Configure in `pareidolia.toml`:**
 ```toml
 [prompts]
 persona = "researcher"
 action = "research"
-variants = ["update", "refine", "summarize", "expand"]
+variants = ["update", "refine", "summarize"]
 ```
 
-3. **Generate with variants:**
+3. **Generate:**
+```bash
+pareidolia generate
+```
+
+### Template Format
+
+Variant templates are Jinja2 templates with three variables:
+- `{{ persona_name }}` - The persona name
+- `{{ action_name }}` - The action name
+- `{{ variant_name }}` - The variant being generated
+
+Example template structure:
+```markdown
+Transform the following prompt into a "{{ variant_name }}" variant.
+
+Instructions:
+1. Keep the core purpose and tone
+2. Focus on {{ variant_name }}-specific tasks
+3. Maintain the persona's voice
+
+[Transformation instructions here...]
+```
 ```bash
 pareidolia generate
 ```
@@ -371,84 +271,22 @@ This will generate:
 **No variants generated:**
 - Ensure at least one AI CLI tool is installed and available in your PATH
 - Check that the `action` in `[prompts]` matches the action being generated
-- Verify variant templates exist in your `variant/` directory
+### Supported CLI Tools
 
-**CLI tool not found:**
-- Install the required CLI tool or specify a different one with `cli_tool`
-- Check tool installation: `which claude`, `which gh`, etc.
+Pareidolia auto-detects the first available AI CLI tool:
 
-**Template not found:**
-- Ensure variant templates exist with supported extensions: `.md.j2`, `.md.jinja`, `.md.jinja2`, or `.md`
-- Copy from defaults: `cp src/pareidolia/templates/defaults/variant/*.md.j2 pareidolia/variant/`
+| Tool | Command | Installation |
+|------|---------|--------------|
+| **Codex** | `codex` | Install OpenAI Codex CLI |
+| **Copilot** | `gh copilot` | Install GitHub CLI and Copilot extension |
+| **Claude** | `claude` | Install Anthropic Claude CLI |
+| **Gemini** | `gemini` | Install Google Gemini CLI |
 
-## Project Structure
-
+Override auto-detection in your config:
+```toml
+[prompts]
+cli_tool = "claude"
 ```
-pareidolia/
-├── src/
-│   └── pareidolia/
-│       ├── __init__.py
-│       ├── __main__.py
-│       ├── cli.py           # Command-line interface
-│       ├── core/            # Core functionality (config, models)
-│       ├── templates/       # Template management and rendering
-│       └── generators/      # Prompt generators and exporters
-├── tests/                   # Test suite (pytest)
-├── examples/                # Example projects
-├── pyproject.toml
-├── README.md
-└── AGENTS.md
-```
-
-## Development
-
-### Setup
-
-```bash
-# Install development dependencies
-uv sync --dev
-
-# Run tests
-uv run pytest
-
-# Run linting
-uv run ruff check .
-uv run mypy src/
-```
-
-### Workflow
-
-- Feature branching is used for all development
-- Changes are broken into logical commits following Linux kernel commit message guidelines
-- All code uses type hints and passes linting
-- Complete test coverage with pytest
-
-### Commit Message Format
-
-```
-component: short description (50 chars or less)
-
-More detailed explanatory text, if necessary. Wrap at 72 characters.
-Explain the problem that this commit is solving. Focus on why you are
-making this change as opposed to how.
-
-- Bullet points are okay
-- Use a dash or asterisk for bullets
-```
-
-## Testing
-
-```bash
-# Run all tests
-uv run pytest
-
-# Run with coverage
-uv run pytest --cov=pareidolia --cov-report=html
-
-# Run specific test file
-uv run pytest tests/test_cli.py
-```
-
 ## Contributing
 
 1. Create a feature branch from `master`
@@ -465,3 +303,8 @@ uv run pytest tests/test_cli.py
 ## Authors
 
 [Add authors here]
+### Troubleshooting Variants
+
+- **No variants generated:** Check that `action` in `[prompts]` matches the action being generated and AI CLI tool is installed
+- **CLI tool not found:** Install a supported tool or specify one with `cli_tool`
+- **Template not found:** Copy defaults: `cp src/pareidolia/templates/defaults/variant/*.md.j2 pareidolia/variant/`
