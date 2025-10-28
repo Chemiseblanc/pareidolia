@@ -9,8 +9,8 @@ try:
 except ImportError:
     import tomli as tomllib  # type: ignore
 
-from pareidolia.core.exceptions import ConfigurationError
-from pareidolia.core.models import ExportConfig
+from pareidolia.core.exceptions import ConfigurationError, ValidationError
+from pareidolia.core.models import ExportConfig, VariantConfig
 from pareidolia.utils.validation import validate_config_schema
 
 
@@ -21,10 +21,12 @@ class PareidoliaConfig:
     Attributes:
         root: Root directory containing persona/action/example folders
         export: Export configuration
+        variants: Optional variant generation configuration
     """
 
     root: Path
     export: ExportConfig
+    variants: VariantConfig | None = None
 
     @classmethod
     def from_file(cls, config_path: Path) -> "PareidoliaConfig":
@@ -94,7 +96,23 @@ class PareidoliaConfig:
         except ValueError as e:
             raise ConfigurationError(f"Invalid export configuration: {e}") from e
 
-        return cls(root=root, export=export)
+        # Parse variants section (optional)
+        variants_data = config_data.get("variants")
+        variants: VariantConfig | None = None
+        if variants_data:
+            try:
+                variants = VariantConfig(
+                    persona=variants_data["persona"],
+                    action=variants_data["action"],
+                    generate=variants_data["generate"],
+                    cli_tool=variants_data.get("cli_tool"),
+                )
+            except (KeyError, ValueError, ValidationError) as e:
+                raise ConfigurationError(
+                    f"Invalid variants configuration: {e}"
+                ) from e
+
+        return cls(root=root, export=export, variants=variants)
 
     @classmethod
     def from_defaults(
@@ -122,7 +140,7 @@ class PareidoliaConfig:
         output_path = project_root / output_dir
         export = ExportConfig(tool=tool, library=library, output_dir=output_path)
 
-        return cls(root=root, export=export)
+        return cls(root=root, export=export, variants=None)
 
     def merge_overrides(
         self,
@@ -152,4 +170,4 @@ class PareidoliaConfig:
             output_dir=output_path,
         )
 
-        return PareidoliaConfig(root=self.root, export=export)
+        return PareidoliaConfig(root=self.root, export=export, variants=self.variants)
