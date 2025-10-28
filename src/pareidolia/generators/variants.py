@@ -71,7 +71,7 @@ class VariantGenerator:
         # Generate each variant
         for variant_name in prompt_config.variants:
             try:
-                variant_content = self._generate_single_variant(
+                variant_content = self.generate_single_variant(
                     variant_name=variant_name,
                     persona_name=prompt_config.persona,
                     action_name=prompt_config.action,
@@ -128,7 +128,7 @@ class VariantGenerator:
         logger.info(f"Using CLI tool: {selected.name}")
         return selected
 
-    def _generate_single_variant(
+    def generate_single_variant(
         self,
         variant_name: str,
         persona_name: str,
@@ -137,7 +137,7 @@ class VariantGenerator:
         tool: CLITool,
         timeout: int,
     ) -> str:
-        """Generate a single variant.
+        """Generate a single variant using AI transformation.
 
         Args:
             variant_name: Name of the variant
