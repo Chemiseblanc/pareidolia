@@ -5,7 +5,13 @@ from pathlib import Path
 import pytest
 
 from pareidolia.core.exceptions import ValidationError
-from pareidolia.core.models import Action, Example, ExportConfig, Persona, VariantConfig
+from pareidolia.core.models import (
+    Action,
+    Example,
+    GenerateConfig,
+    Persona,
+    PromptConfig,
+)
 
 
 class TestPersona:
@@ -131,12 +137,12 @@ class TestExample:
             Example(name="test", content="")
 
 
-class TestExportConfig:
-    """Tests for ExportConfig model."""
+class TestGenerateConfig:
+    """Tests for GenerateConfig model."""
 
     def test_create_valid_config(self) -> None:
-        """Test creating a valid export config."""
-        config = ExportConfig(
+        """Test creating a valid generate config."""
+        config = GenerateConfig(
             tool="copilot",
             library="mylib",
             output_dir=Path("output"),
@@ -147,7 +153,7 @@ class TestExportConfig:
 
     def test_create_config_without_library(self) -> None:
         """Test creating config without library."""
-        config = ExportConfig(
+        config = GenerateConfig(
             tool="standard",
             library=None,
             output_dir=Path("output"),
@@ -155,8 +161,8 @@ class TestExportConfig:
         assert config.library is None
 
     def test_config_is_frozen(self) -> None:
-        """Test that ExportConfig is immutable."""
-        config = ExportConfig(
+        """Test that GenerateConfig is immutable."""
+        config = GenerateConfig(
             tool="standard",
             library=None,
             output_dir=Path("output"),
@@ -168,114 +174,114 @@ class TestExportConfig:
     def test_config_empty_tool(self) -> None:
         """Test that empty tool raises error."""
         with pytest.raises(ValueError, match="Tool cannot be empty"):
-            ExportConfig(tool="", library=None, output_dir=Path("output"))
+            GenerateConfig(tool="", library=None, output_dir=Path("output"))
 
     def test_config_invalid_library(self) -> None:
         """Test that invalid library name raises error."""
         with pytest.raises(ValidationError):
-            ExportConfig(
+            GenerateConfig(
                 tool="standard",
                 library="Invalid Library",
                 output_dir=Path("output"),
             )
 
 
-class TestVariantConfig:
-    """Tests for VariantConfig model."""
+class TestPromptConfig:
+    """Tests for PromptConfig model."""
 
-    def test_variant_config_creation_with_valid_data(self) -> None:
-        """Test creating a valid variant config."""
-        config = VariantConfig(
+    def test_prompt_config_creation_with_valid_data(self) -> None:
+        """Test creating a valid prompt config."""
+        config = PromptConfig(
             persona="researcher",
             action="research",
-            generate=["update", "refine", "summarize"],
+            variants=["update", "refine", "summarize"],
         )
         assert config.persona == "researcher"
         assert config.action == "research"
-        assert config.generate == ["update", "refine", "summarize"]
+        assert config.variants == ["update", "refine", "summarize"]
         assert config.cli_tool is None
 
-    def test_variant_config_with_cli_tool(self) -> None:
-        """Test creating variant config with specified CLI tool."""
-        config = VariantConfig(
+    def test_prompt_config_with_cli_tool(self) -> None:
+        """Test creating prompt config with specified CLI tool."""
+        config = PromptConfig(
             persona="researcher",
             action="research",
-            generate=["update"],
+            variants=["update"],
             cli_tool="claude",
         )
         assert config.cli_tool == "claude"
 
-    def test_variant_config_is_frozen(self) -> None:
-        """Test that VariantConfig is immutable."""
-        config = VariantConfig(
+    def test_prompt_config_is_frozen(self) -> None:
+        """Test that PromptConfig is immutable."""
+        config = PromptConfig(
             persona="researcher",
             action="research",
-            generate=["update"],
+            variants=["update"],
         )
 
         with pytest.raises(AttributeError):
             config.persona = "new_persona"  # type: ignore
 
-    def test_variant_config_validates_persona(self) -> None:
+    def test_prompt_config_validates_persona(self) -> None:
         """Test that invalid persona name raises error."""
         with pytest.raises(ValidationError):
-            VariantConfig(
+            PromptConfig(
                 persona="Invalid Persona",
                 action="research",
-                generate=["update"],
+                variants=["update"],
             )
 
-    def test_variant_config_validates_action(self) -> None:
+    def test_prompt_config_validates_action(self) -> None:
         """Test that invalid action name raises error."""
         with pytest.raises(ValidationError):
-            VariantConfig(
+            PromptConfig(
                 persona="researcher",
                 action="Invalid Action",
-                generate=["update"],
+                variants=["update"],
             )
 
-    def test_variant_config_validates_generate_list(self) -> None:
-        """Test that empty generate list raises error."""
+    def test_prompt_config_validates_variants_list(self) -> None:
+        """Test that empty variants list raises error."""
         with pytest.raises(ValueError, match="cannot be empty"):
-            VariantConfig(
+            PromptConfig(
                 persona="researcher",
                 action="research",
-                generate=[],
+                variants=[],
             )
 
-    def test_variant_config_validates_variant_names(self) -> None:
+    def test_prompt_config_validates_variant_names(self) -> None:
         """Test that invalid variant names raise error."""
         with pytest.raises(ValidationError):
-            VariantConfig(
+            PromptConfig(
                 persona="researcher",
                 action="research",
-                generate=["update", "Invalid Name"],
+                variants=["update", "Invalid Name"],
             )
 
-    def test_variant_config_accepts_optional_cli_tool(self) -> None:
+    def test_prompt_config_accepts_optional_cli_tool(self) -> None:
         """Test that CLI tool is optional."""
-        config = VariantConfig(
+        config = PromptConfig(
             persona="researcher",
             action="research",
-            generate=["update"],
+            variants=["update"],
             cli_tool=None,
         )
         assert config.cli_tool is None
 
-    def test_variant_config_rejects_empty_cli_tool(self) -> None:
+    def test_prompt_config_rejects_empty_cli_tool(self) -> None:
         """Test that empty CLI tool string raises error."""
         with pytest.raises(ValueError, match="cannot be empty string"):
-            VariantConfig(
+            PromptConfig(
                 persona="researcher",
                 action="research",
-                generate=["update"],
+                variants=["update"],
                 cli_tool="",
             )
 
         with pytest.raises(ValueError, match="cannot be empty string"):
-            VariantConfig(
+            PromptConfig(
                 persona="researcher",
                 action="research",
-                generate=["update"],
+                variants=["update"],
                 cli_tool="   ",
             )

@@ -6,7 +6,7 @@ from pareidolia.core.exceptions import (
     NoAvailableCLIToolError,
     VariantTemplateNotFoundError,
 )
-from pareidolia.core.models import VariantConfig
+from pareidolia.core.models import PromptConfig
 from pareidolia.generators.cli_tools import (
     CLITool,
     get_available_tools,
@@ -45,14 +45,14 @@ class VariantGenerator:
 
     def generate_variants(
         self,
-        variant_config: VariantConfig,
+        prompt_config: PromptConfig,
         base_prompt: str,
         timeout: int = 60,
     ) -> dict[str, str]:
         """Generate all configured variants.
 
         Args:
-            variant_config: Variant configuration
+            prompt_config: Prompt variant configuration
             base_prompt: Base prompt content to transform
             timeout: CLI tool timeout in seconds
 
@@ -64,17 +64,17 @@ class VariantGenerator:
             VariantTemplateNotFoundError: If variant template missing
         """
         # Determine which tool to use
-        tool = self._select_tool(variant_config.cli_tool)
+        tool = self._select_tool(prompt_config.cli_tool)
 
         variants: dict[str, str] = {}
 
         # Generate each variant
-        for variant_name in variant_config.generate:
+        for variant_name in prompt_config.variants:
             try:
                 variant_content = self._generate_single_variant(
                     variant_name=variant_name,
-                    persona_name=variant_config.persona,
-                    action_name=variant_config.action,
+                    persona_name=prompt_config.persona,
+                    action_name=prompt_config.action,
                     base_prompt=base_prompt,
                     tool=tool,
                     timeout=timeout,

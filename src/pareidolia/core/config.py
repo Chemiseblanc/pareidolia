@@ -10,7 +10,7 @@ except ImportError:
     import tomli as tomllib  # type: ignore
 
 from pareidolia.core.exceptions import ConfigurationError, ValidationError
-from pareidolia.core.models import ExportConfig, VariantConfig
+from pareidolia.core.models import GenerateConfig, PromptConfig
 from pareidolia.utils.validation import validate_config_schema
 
 
@@ -20,13 +20,13 @@ class PareidoliaConfig:
 
     Attributes:
         root: Root directory containing persona/action/example folders
-        export: Export configuration
-        variants: Optional variant generation configuration
+        generate: Generate configuration
+        prompts: Optional prompt variant generation configuration
     """
 
     root: Path
-    export: ExportConfig
-    variants: VariantConfig | None = None
+    generate: GenerateConfig
+    prompts: PromptConfig | None = None
 
     @classmethod
     def from_file(cls, config_path: Path) -> "PareidoliaConfig":
@@ -80,39 +80,39 @@ class PareidoliaConfig:
         root_str = pareidolia.get("root", "pareidolia")
         root = base_path / root_str
 
-        # Parse export section
-        export_data = config_data.get("export", {})
-        tool = export_data.get("tool", "standard")
-        library = export_data.get("library")
-        output_dir_str = export_data.get("output_dir", "prompts")
+        # Parse generate section
+        generate_data = config_data.get("generate", {})
+        tool = generate_data.get("tool", "standard")
+        library = generate_data.get("library")
+        output_dir_str = generate_data.get("output_dir", "prompts")
         output_dir = base_path / output_dir_str
 
         try:
-            export = ExportConfig(
+            generate = GenerateConfig(
                 tool=tool,
                 library=library,
                 output_dir=output_dir,
             )
         except ValueError as e:
-            raise ConfigurationError(f"Invalid export configuration: {e}") from e
+            raise ConfigurationError(f"Invalid generate configuration: {e}") from e
 
-        # Parse variants section (optional)
-        variants_data = config_data.get("variants")
-        variants: VariantConfig | None = None
-        if variants_data:
+        # Parse prompts section (optional)
+        prompts_data = config_data.get("prompts")
+        prompts: PromptConfig | None = None
+        if prompts_data:
             try:
-                variants = VariantConfig(
-                    persona=variants_data["persona"],
-                    action=variants_data["action"],
-                    generate=variants_data["generate"],
-                    cli_tool=variants_data.get("cli_tool"),
+                prompts = PromptConfig(
+                    persona=prompts_data["persona"],
+                    action=prompts_data["action"],
+                    variants=prompts_data["variants"],
+                    cli_tool=prompts_data.get("cli_tool"),
                 )
             except (KeyError, ValueError, ValidationError) as e:
                 raise ConfigurationError(
-                    f"Invalid variants configuration: {e}"
+                    f"Invalid prompts configuration: {e}"
                 ) from e
 
-        return cls(root=root, export=export, variants=variants)
+        return cls(root=root, generate=generate, prompts=prompts)
 
     @classmethod
     def from_defaults(
@@ -138,9 +138,9 @@ class PareidoliaConfig:
 
         root = project_root / "pareidolia"
         output_path = project_root / output_dir
-        export = ExportConfig(tool=tool, library=library, output_dir=output_path)
+        generate = GenerateConfig(tool=tool, library=library, output_dir=output_path)
 
-        return cls(root=root, export=export, variants=None)
+        return cls(root=root, generate=generate, prompts=None)
 
     def merge_overrides(
         self,
@@ -162,12 +162,14 @@ class PareidoliaConfig:
         if output_dir is not None:
             output_path = self.root.parent / output_dir
         else:
-            output_path = self.export.output_dir
+            output_path = self.generate.output_dir
 
-        export = ExportConfig(
-            tool=tool if tool is not None else self.export.tool,
-            library=library if library is not None else self.export.library,
+        generate = GenerateConfig(
+            tool=tool if tool is not None else self.generate.tool,
+            library=library if library is not None else self.generate.library,
             output_dir=output_path,
         )
 
-        return PareidoliaConfig(root=self.root, export=export, variants=self.variants)
+        return PareidoliaConfig(
+            root=self.root, generate=generate, prompts=self.prompts
+        )

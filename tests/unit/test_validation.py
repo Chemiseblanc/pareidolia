@@ -103,7 +103,7 @@ class TestValidateConfigSchema:
             "pareidolia": {
                 "root": "pareidolia",
             },
-            "export": {
+            "generate": {
                 "tool": "copilot",
                 "library": "mylib",
                 "output_dir": "output",
@@ -121,22 +121,22 @@ class TestValidateConfigSchema:
         with pytest.raises(ValidationError):
             validate_config_schema({"pareidolia": "not a dict"})
 
-    def test_invalid_export_section(self) -> None:
-        """Test that invalid export section fails validation."""
+    def test_invalid_generate_section(self) -> None:
+        """Test that invalid generate section fails validation."""
         with pytest.raises(ValidationError):
-            validate_config_schema({"export": "not a dict"})
+            validate_config_schema({"generate": "not a dict"})
 
     def test_invalid_tool_type(self) -> None:
         """Test that invalid tool type fails validation."""
         with pytest.raises(ValidationError, match="tool must be a string"):
-            validate_config_schema({"export": {"tool": 123}})
+            validate_config_schema({"generate": {"tool": 123}})
 
     def test_invalid_library_type(self) -> None:
         """Test that invalid library type fails validation."""
         with pytest.raises(ValidationError, match="library must be a string"):
-            validate_config_schema({"export": {"library": 123}})
+            validate_config_schema({"generate": {"library": 123}})
 
     def test_null_library_allowed(self) -> None:
         """Test that null library value is allowed."""
-        config = {"export": {"library": None}}
+        config = {"generate": {"library": None}}
         validate_config_schema(config)  # Should not raise

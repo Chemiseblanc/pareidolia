@@ -108,7 +108,7 @@ def sample_project(temp_dir: Path) -> Path:
     config_file.write_text(
         '[pareidolia]\n'
         'root = "pareidolia"\n\n'
-        '[export]\n'
+        '[generate]\n'
         'tool = "standard"\n'
         'output_dir = "prompts"\n'
     )

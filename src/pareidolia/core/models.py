@@ -69,12 +69,12 @@ class Example:
 
 
 @dataclass(frozen=True)
-class ExportConfig:
-    """Configuration for exporting prompts.
+class GenerateConfig:
+    """Configuration for generating prompts.
 
     Attributes:
         tool: The target tool (e.g., 'copilot', 'claude-code')
-        library: Optional library name for bundled exports
+        library: Optional library name for bundled generation
         output_dir: Directory where prompts will be written
     """
 
@@ -83,7 +83,7 @@ class ExportConfig:
     output_dir: Path
 
     def __post_init__(self) -> None:
-        """Validate export configuration after initialization."""
+        """Validate generate configuration after initialization."""
         if not self.tool.strip():
             raise ValueError("Tool cannot be empty")
         if self.library is not None:
@@ -91,28 +91,28 @@ class ExportConfig:
 
 
 @dataclass(frozen=True)
-class VariantConfig:
+class PromptConfig:
     """Configuration for prompt variants.
 
     Attributes:
         persona: Persona to use as base
         action: Action/task to use as base
-        generate: List of variant names to generate
+        variants: List of variant names to generate
         cli_tool: Optional specific CLI tool to use
     """
 
     persona: str
     action: str
-    generate: list[str]
+    variants: list[str]
     cli_tool: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate variant configuration."""
-        validate_identifier(self.persona, "Variant persona")
-        validate_identifier(self.action, "Variant action")
-        if not self.generate:
-            raise ValueError("Variant generate list cannot be empty")
-        for variant_name in self.generate:
+        """Validate prompt configuration."""
+        validate_identifier(self.persona, "Prompt persona")
+        validate_identifier(self.action, "Prompt action")
+        if not self.variants:
+            raise ValueError("Prompt variants list cannot be empty")
+        for variant_name in self.variants:
             validate_identifier(variant_name, "Variant name")
         if self.cli_tool is not None and not self.cli_tool.strip():
             raise ValueError("CLI tool name cannot be empty string")

@@ -114,11 +114,11 @@ tool = "copilot"             # or "claude-code", etc.
 library = "promptlib"        # Optional: enables library format when set
 output_dir = "prompts"       # Where to write generated prompts
 
-[variants]
+[prompts]
 # Optional: AI-powered variant generation
 persona = "researcher"       # Persona to use as base
 action = "research"          # Action to use as base
-generate = ["update", "refine", "summarize"]  # List of variants to generate
+variants = ["update", "refine", "summarize"]  # List of variants to generate
 cli_tool = "claude"          # Optional: specific AI tool (auto-detects if omitted)
 ```
 
@@ -208,6 +208,8 @@ output/
 
 Pareidolia can automatically generate prompt variants using AI CLI tools. Variants are transformations of base prompts (e.g., "update-research", "refine-research") that are generated during the export process using AI to transform the base prompt according to your variant templates.
 
+The `[prompts]` configuration section controls which variants are generated. The field `variants` contains a list of variant names (like "update", "refine"), while the term "variant" still refers to individual transformation types.
+
 ### What Are Variants?
 
 Variants are specialized versions of a base prompt that focus on different tasks:
@@ -218,13 +220,13 @@ Variants are specialized versions of a base prompt that focus on different tasks
 
 ### Configuration
 
-Add a `[variants]` section to your `pareidolia.toml`:
+Add a `[prompts]` section to your `pareidolia.toml`:
 
 ```toml
-[variants]
+[prompts]
 persona = "researcher"       # Persona to use as base
 action = "research"          # Action to use as base  
-generate = ["update", "refine", "summarize"]  # Variants to generate
+variants = ["update", "refine", "summarize"]  # Variants to generate
 cli_tool = "claude"          # Optional: specific AI tool (auto-detects if omitted)
 ```
 
@@ -346,10 +348,10 @@ cp src/pareidolia/templates/defaults/variant/*.md.j2 pareidolia/variant/
 
 2. **Configure variants in `pareidolia.toml`:**
 ```toml
-[variants]
+[prompts]
 persona = "researcher"
 action = "research"
-generate = ["update", "refine", "summarize", "expand"]
+variants = ["update", "refine", "summarize", "expand"]
 ```
 
 3. **Export with variants:**

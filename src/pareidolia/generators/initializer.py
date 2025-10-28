@@ -23,22 +23,22 @@ class ProjectInitializer:
 # Root directory containing your personas, actions, examples, and templates
 root = "pareidolia"
 
-[export]
-# Target tool for prompt export (e.g., "standard", "copilot", "claude-code")
+[generate]
+# Target tool for prompt generation (e.g., "standard", "copilot", "claude-code")
 tool = "standard"
 
-# Optional: Library name for bundled exports
+# Optional: Library name for bundled generation
 # library = "my-prompts"
 
 # Directory where generated prompts will be written
 output_dir = "prompts"
 
-# Optional: Variant generation configuration
+# Optional: Prompt variant generation configuration
 # Uncomment and configure to enable automated prompt variants
-# [variants]
+# [prompts]
 # persona = "researcher"
 # action = "analyze"
-# generate = ["expand", "refine", "summarize"]
+# variants = ["expand", "refine", "summarize"]
 # cli_tool = "claude"  # Optional: specific CLI tool to use
 """
 

@@ -7,7 +7,7 @@ from pathlib import Path
 from pareidolia import __version__
 from pareidolia.core.config import PareidoliaConfig
 from pareidolia.core.exceptions import ConfigurationError, PareidoliaError
-from pareidolia.generators.exporter import Exporter
+from pareidolia.generators.generator import Generator
 from pareidolia.generators.initializer import ProjectInitializer
 
 
@@ -40,47 +40,47 @@ def create_parser() -> argparse.ArgumentParser:
     # Create subparsers for commands
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
-    # Export command
-    export_parser = subparsers.add_parser(
-        "export",
-        help="Export prompts to files",
+    # Generate command
+    generate_parser = subparsers.add_parser(
+        "generate",
+        help="Generate prompts from templates",
     )
 
-    export_parser.add_argument(
+    generate_parser.add_argument(
         "--tool",
         type=str,
         help="Target tool (e.g., 'copilot', 'claude-code', 'standard')",
     )
 
-    export_parser.add_argument(
+    generate_parser.add_argument(
         "--library",
         type=str,
-        help="Library name for bundled exports",
+        help="Library name for bundled generation",
     )
 
-    export_parser.add_argument(
+    generate_parser.add_argument(
         "--output-dir",
         type=str,
         help="Output directory for generated prompts",
     )
 
-    export_parser.add_argument(
+    generate_parser.add_argument(
         "--persona",
         type=str,
         help="Persona name to use (defaults to first available)",
     )
 
-    export_parser.add_argument(
+    generate_parser.add_argument(
         "--examples",
         type=str,
         nargs="+",
         help="Example names to include",
     )
 
-    export_parser.add_argument(
+    generate_parser.add_argument(
         "--action",
         type=str,
-        help="Specific action to export (exports all if not specified)",
+        help="Specific action to generate (generates all if not specified)",
     )
 
     # Init command
@@ -165,7 +165,7 @@ def handle_init(directory: str, no_scaffold: bool) -> int:
         print("\nNext steps:")
         print("  1. Review the configuration in .pareidolia.toml")
         print("  2. Customize the example files in pareidolia/")
-        print("  3. Run 'pareidolia export' to generate prompts")
+        print("  3. Run 'pareidolia generate' to generate prompts")
 
         return 0
 
@@ -177,36 +177,36 @@ def handle_init(directory: str, no_scaffold: bool) -> int:
         return 1
 
 
-def handle_export(
+def handle_generate(
     config: PareidoliaConfig,
     persona: str | None,
     examples: list[str] | None,
     action: str | None,
 ) -> int:
-    """Handle the export command.
+    """Handle the generate command.
 
     Args:
         config: Pareidolia configuration
         persona: Optional persona name
         examples: Optional list of example names
-        action: Optional specific action to export
+        action: Optional specific action to generate
 
     Returns:
         Exit code (0 for success, 1 for failure)
     """
     try:
-        exporter = Exporter(config)
+        generator = Generator(config)
 
         if action:
-            # Export single action
+            # Generate single action
             if not persona:
-                print("Error: --persona is required when exporting a specific action")
+                print("Error: --persona is required when generating a specific action")
                 return 1
 
-            result = exporter.export_action(action, persona, examples)
+            result = generator.generate_action(action, persona, examples)
         else:
-            # Export all actions
-            result = exporter.export_all(persona, examples)
+            # Generate all actions
+            result = generator.generate_all(persona, examples)
 
         # Display results
         if result.files_generated:
@@ -255,8 +255,8 @@ def main() -> int:
             # Use defaults if no config file
             config = PareidoliaConfig.from_defaults()
 
-        # Apply CLI overrides for export command
-        if args.command == "export":
+        # Apply CLI overrides for generate command
+        if args.command == "generate":
             config = config.merge_overrides(
                 tool=args.tool,
                 library=args.library,
@@ -267,8 +267,8 @@ def main() -> int:
         return 1
 
     # Handle commands
-    if args.command == "export":
-        return handle_export(
+    if args.command == "generate":
+        return handle_generate(
             config,
             args.persona,
             args.examples,

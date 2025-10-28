@@ -1,23 +1,23 @@
-"""Integration tests for export functionality."""
+"""Integration tests for generate functionality."""
 
 from pathlib import Path
 
 from pareidolia.core.config import PareidoliaConfig
-from pareidolia.generators.exporter import Exporter
+from pareidolia.generators.generator import Generator
 
 
-class TestExportIntegration:
-    """Integration tests for export workflow."""
+class TestGenerateIntegration:
+    """Integration tests for generate workflow."""
 
-    def test_export_all_standard_format(self, sample_project: Path) -> None:
-        """Test exporting all actions in standard format."""
+    def test_generate_all_standard_format(self, sample_project: Path) -> None:
+        """Test generating all actions in standard format."""
         # Load config
         config_file = sample_project / "pareidolia.toml"
         config = PareidoliaConfig.from_file(config_file)
 
-        # Export
-        exporter = Exporter(config)
-        result = exporter.export_all()
+        # Generate
+        generator = Generator(config)
+        result = generator.generate_all()
 
         # Verify results
         assert result.success
@@ -32,13 +32,13 @@ class TestExportIntegration:
         assert "expert researcher" in content
         assert "research the following topic" in content
 
-    def test_export_with_examples(self, sample_project: Path) -> None:
-        """Test exporting with examples included."""
+    def test_generate_with_examples(self, sample_project: Path) -> None:
+        """Test generating with examples included."""
         config_file = sample_project / "pareidolia.toml"
         config = PareidoliaConfig.from_file(config_file)
 
-        exporter = Exporter(config)
-        result = exporter.export_all(example_names=["report-format"])
+        generator = Generator(config)
+        result = generator.generate_all(example_names=["report-format"])
 
         assert result.success
 
@@ -48,16 +48,16 @@ class TestExportIntegration:
         assert "Examples:" in content
         assert "Research Report Example" in content
 
-    def test_export_copilot_format(self, sample_project: Path) -> None:
-        """Test exporting in Copilot format."""
+    def test_generate_copilot_format(self, sample_project: Path) -> None:
+        """Test generating in Copilot format."""
         config_file = sample_project / "pareidolia.toml"
         config = PareidoliaConfig.from_file(config_file)
 
         # Override to use Copilot format
         config = config.merge_overrides(tool="copilot")
 
-        exporter = Exporter(config)
-        result = exporter.export_all()
+        generator = Generator(config)
+        result = generator.generate_all()
 
         assert result.success
 
@@ -65,16 +65,16 @@ class TestExportIntegration:
         output_file = sample_project / "prompts" / "research.prompt.md"
         assert output_file.exists()
 
-    def test_export_copilot_library_format(self, sample_project: Path) -> None:
-        """Test exporting in Copilot library format."""
+    def test_generate_copilot_library_format(self, sample_project: Path) -> None:
+        """Test generating in Copilot library format."""
         config_file = sample_project / "pareidolia.toml"
         config = PareidoliaConfig.from_file(config_file)
 
         # Override to use Copilot with library
         config = config.merge_overrides(tool="copilot", library="testlib")
 
-        exporter = Exporter(config)
-        result = exporter.export_all()
+        generator = Generator(config)
+        result = generator.generate_all()
 
         assert result.success
 
@@ -82,16 +82,16 @@ class TestExportIntegration:
         output_file = sample_project / "prompts" / "testlib.research.prompt.md"
         assert output_file.exists()
 
-    def test_export_claude_code_library_format(self, sample_project: Path) -> None:
-        """Test exporting in Claude Code library format."""
+    def test_generate_claude_code_library_format(self, sample_project: Path) -> None:
+        """Test generating in Claude Code library format."""
         config_file = sample_project / "pareidolia.toml"
         config = PareidoliaConfig.from_file(config_file)
 
         # Override to use Claude Code with library
         config = config.merge_overrides(tool="claude-code", library="testlib")
 
-        exporter = Exporter(config)
-        result = exporter.export_all()
+        generator = Generator(config)
+        result = generator.generate_all()
 
         assert result.success
 
@@ -99,13 +99,13 @@ class TestExportIntegration:
         output_file = sample_project / "prompts" / "testlib" / "research.md"
         assert output_file.exists()
 
-    def test_export_single_action(self, sample_project: Path) -> None:
-        """Test exporting a single action."""
+    def test_generate_single_action(self, sample_project: Path) -> None:
+        """Test generating a single action."""
         config_file = sample_project / "pareidolia.toml"
         config = PareidoliaConfig.from_file(config_file)
 
-        exporter = Exporter(config)
-        result = exporter.export_action("research", "researcher")
+        generator = Generator(config)
+        result = generator.generate_action("research", "researcher")
 
         assert result.success
         assert len(result.files_generated) == 1
@@ -113,16 +113,16 @@ class TestExportIntegration:
         output_file = sample_project / "prompts" / "research.prompt.md"
         assert output_file.exists()
 
-    def test_export_creates_output_directory(self, sample_project: Path) -> None:
-        """Test that export creates output directory if it doesn't exist."""
+    def test_generate_creates_output_directory(self, sample_project: Path) -> None:
+        """Test that generate creates output directory if it doesn't exist."""
         config_file = sample_project / "pareidolia.toml"
         config = PareidoliaConfig.from_file(config_file)
 
         # Use a non-existent output directory
         config = config.merge_overrides(output_dir="new_output")
 
-        exporter = Exporter(config)
-        result = exporter.export_all()
+        generator = Generator(config)
+        result = generator.generate_all()
 
         assert result.success
 
@@ -130,13 +130,13 @@ class TestExportIntegration:
         assert output_dir.exists()
         assert output_dir.is_dir()
 
-    def test_export_handles_missing_persona(self, sample_project: Path) -> None:
-        """Test that export handles missing persona gracefully."""
+    def test_generate_handles_missing_persona(self, sample_project: Path) -> None:
+        """Test that generate handles missing persona gracefully."""
         config_file = sample_project / "pareidolia.toml"
         config = PareidoliaConfig.from_file(config_file)
 
-        exporter = Exporter(config)
-        result = exporter.export_action("research", "nonexistent")
+        generator = Generator(config)
+        result = generator.generate_action("research", "nonexistent")
 
         assert not result.success
         assert len(result.errors) > 0
