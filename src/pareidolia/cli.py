@@ -3,6 +3,7 @@
 import argparse
 import sys
 from pathlib import Path
+from typing import Literal
 
 from pareidolia import __version__
 from pareidolia.core.config import PareidoliaConfig
@@ -31,10 +32,23 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
+        "--mcp",
+        action="store_true",
+        help="Run in MCP server mode",
+    )
+
+    parser.add_argument(
         "--config",
         type=Path,
         default=Path("pareidolia.toml"),
         help="Path to configuration file (default: pareidolia.toml)",
+    )
+
+    parser.add_argument(
+        "--config-dir",
+        type=Path,
+        default=Path.cwd(),
+        help="Directory containing .pareidolia.toml (for MCP mode, default: current directory)",
     )
 
     # Create subparsers for commands
@@ -177,6 +191,30 @@ def handle_init(directory: str, no_scaffold: bool) -> int:
         return 1
 
 
+def handle_mcp(config_dir: Path) -> int:
+    """Handle MCP server mode.
+
+    Args:
+        config_dir: Directory containing .pareidolia.toml
+
+    Returns:
+        Exit code (0 for success, 1 for failure)
+    """
+    try:
+        from pareidolia.mcp.server import create_server
+
+        # Determine mode - use 'mcp' mode by default
+        mode: Literal["cli", "mcp"] = "mcp"
+
+        # Create and run server
+        server = create_server(config_dir=config_dir, mode=mode)
+        server.run()
+        return 0
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
 def handle_generate(
     config: PareidoliaConfig,
     persona: str | None,
@@ -237,6 +275,10 @@ def main() -> int:
     """
     parser = create_parser()
     args = parser.parse_args()
+
+    # Handle MCP mode
+    if args.mcp:
+        return handle_mcp(args.config_dir)
 
     # Show help if no command specified
     if not args.command:
