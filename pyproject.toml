@@ -11,7 +11,6 @@ dependencies = [
 
 [project.scripts]
 pareidolia = "pareidolia.cli:main"
-pareidolia-mcp = "pareidolia.mcp.__main__:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -526,12 +526,12 @@ The MCP server can run in two modes:
 
 **CLI Mode** (for testing and debugging):
 ```bash
-pareidolia-mcp --config-dir ./my-project
+pareidolia --mcp --config-dir ./my-project
 ```
 
 **MCP Mode** (for integration with AI tools):
 ```bash
-pareidolia-mcp --mcp --config-dir ./my-project
+pareidolia --mcp --config-dir ./my-project
 ```
 
 If no `--config-dir` is specified, the current directory is used.
@@ -592,7 +592,7 @@ Configure your AI tool to use the MCP server:
 {
   "mcpServers": {
     "pareidolia": {
-      "command": "pareidolia-mcp",
+      "command": "pareidolia",
       "args": ["--mcp", "--config-dir", "/path/to/your/project"]
     }
   }

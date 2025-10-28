@@ -1,4 +1,8 @@
-"""CLI entry point for Pareidolia MCP server."""
+"""CLI entry point for Pareidolia MCP server.
+
+Deprecated: Use 'pareidolia --mcp' instead.
+This entry point is maintained for backwards compatibility.
+"""
 
 import sys
 from pathlib import Path
@@ -9,6 +13,8 @@ from pareidolia.mcp.server import create_server
 
 def main() -> int:
     """Main entry point for the MCP server CLI.
+
+    DEPRECATED: Use 'pareidolia --mcp' instead.
 
     Parses command-line arguments and starts the MCP server.
 
@@ -23,7 +29,7 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(
-        prog="pareidolia-mcp",
+        prog="pareidolia",
         description="MCP server for exposing Pareidolia prompts",
     )
 
