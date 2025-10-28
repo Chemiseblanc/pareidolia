@@ -34,6 +34,50 @@ uv sync
 uv run pareidolia --help
 ```
 
+## Quick Start
+
+### Initialize a New Project
+
+The fastest way to get started with Pareidolia is using the `init` command:
+
+```bash
+# Initialize in the current directory
+pareidolia init
+
+# Initialize in a specific directory
+pareidolia init my-prompts
+
+# Create only the config file (no example files)
+pareidolia init --no-scaffold
+```
+
+This creates:
+- `.pareidolia.toml` - Configuration file with documented defaults
+- `pareidolia/` - Root directory for your prompts
+  - `personas/` - Persona definition files
+  - `actions/` - Action template files (Jinja2)
+  - `examples/` - Example output files
+  - `templates/` - Reusable custom templates
+- `prompts/` - Output directory for generated prompts
+
+The `init` command also creates example files to demonstrate the structure:
+- `pareidolia/personas/researcher.md` - Example persona
+- `pareidolia/actions/analyze.md.j2` - Example action template
+- `pareidolia/examples/analysis-output.md` - Example output format
+- `pareidolia/templates/README.md` - Template usage guide
+
+After initialization, you can immediately try generating prompts:
+
+```bash
+pareidolia export
+```
+
+This will create prompts in the `prompts/` directory using the example files.
+
+### Manual Setup
+
+If you prefer to set up your project manually, create the following structure:
+
 ## Project Structure
 
 A Pareidolia project consists of:
@@ -80,7 +124,17 @@ cli_tool = "claude"          # Optional: specific AI tool (auto-detects if omitt
 
 ## Usage
 
-### Setting Up a Project
+### Getting Started
+
+The recommended way to start a new project is with the `init` command:
+
+```bash
+pareidolia init
+```
+
+See the [Quick Start](#quick-start) section above for more details.
+
+### Manually Setting Up a Project
 
 1. Create the project structure:
 ```bash

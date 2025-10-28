@@ -195,7 +195,7 @@ Your action content here...
         if config_path.exists() and not overwrite:
             raise ConfigurationError(
                 f"Configuration file already exists: {config_path}\n"
-                "Use overwrite=True to replace it."
+                "Please remove it first or initialize in a different directory."
             )
 
         try:

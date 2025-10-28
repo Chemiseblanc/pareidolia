@@ -377,9 +377,6 @@ class TestFullInitializationWorkflow:
 
         # Get file modification times
         config_mtime = (project_root / ".pareidolia.toml").stat().st_mtime
-        persona_mtime = (
-            pareidolia_root / "personas" / "researcher.md"
-        ).stat().st_mtime
 
         # Run scaffold again (should be safe)
         initializer.scaffold_directories(pareidolia_root)
