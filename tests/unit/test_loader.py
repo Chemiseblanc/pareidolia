@@ -18,13 +18,13 @@ class TestTemplateLoaderVariants:
         fixtures_src = Path(__file__).parent.parent / "fixtures" / "variants"
         variant_dir = tmp_path / "variant"
         variant_dir.mkdir()
-        
+
         # Copy all fixture files
         import shutil
         for file in fixtures_src.glob("*"):
             if file.is_file():
                 shutil.copy(file, variant_dir)
-        
+
         return TemplateLoader(tmp_path)
 
     def test_load_variant_template_with_j2_extension(
@@ -58,7 +58,8 @@ class TestTemplateLoaderVariants:
     ) -> None:
         """Test that missing variant template raises error."""
         with pytest.raises(
-            VariantTemplateNotFoundError, match="Variant template not found: nonexistent"
+            VariantTemplateNotFoundError,
+            match="Variant template not found: nonexistent",
         ):
             loader.load_variant_template("nonexistent")
 
