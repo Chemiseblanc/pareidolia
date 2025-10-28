@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from pareidolia.core.exceptions import ValidationError
-from pareidolia.core.models import Action, Example, ExportConfig, Persona
+from pareidolia.core.models import Action, Example, ExportConfig, Persona, VariantConfig
 
 
 class TestPersona:
@@ -177,4 +177,105 @@ class TestExportConfig:
                 tool="standard",
                 library="Invalid Library",
                 output_dir=Path("output"),
+            )
+
+
+class TestVariantConfig:
+    """Tests for VariantConfig model."""
+
+    def test_variant_config_creation_with_valid_data(self) -> None:
+        """Test creating a valid variant config."""
+        config = VariantConfig(
+            persona="researcher",
+            action="research",
+            generate=["update", "refine", "summarize"],
+        )
+        assert config.persona == "researcher"
+        assert config.action == "research"
+        assert config.generate == ["update", "refine", "summarize"]
+        assert config.cli_tool is None
+
+    def test_variant_config_with_cli_tool(self) -> None:
+        """Test creating variant config with specified CLI tool."""
+        config = VariantConfig(
+            persona="researcher",
+            action="research",
+            generate=["update"],
+            cli_tool="claude",
+        )
+        assert config.cli_tool == "claude"
+
+    def test_variant_config_is_frozen(self) -> None:
+        """Test that VariantConfig is immutable."""
+        config = VariantConfig(
+            persona="researcher",
+            action="research",
+            generate=["update"],
+        )
+
+        with pytest.raises(AttributeError):
+            config.persona = "new_persona"  # type: ignore
+
+    def test_variant_config_validates_persona(self) -> None:
+        """Test that invalid persona name raises error."""
+        with pytest.raises(ValidationError):
+            VariantConfig(
+                persona="Invalid Persona",
+                action="research",
+                generate=["update"],
+            )
+
+    def test_variant_config_validates_action(self) -> None:
+        """Test that invalid action name raises error."""
+        with pytest.raises(ValidationError):
+            VariantConfig(
+                persona="researcher",
+                action="Invalid Action",
+                generate=["update"],
+            )
+
+    def test_variant_config_validates_generate_list(self) -> None:
+        """Test that empty generate list raises error."""
+        with pytest.raises(ValueError, match="cannot be empty"):
+            VariantConfig(
+                persona="researcher",
+                action="research",
+                generate=[],
+            )
+
+    def test_variant_config_validates_variant_names(self) -> None:
+        """Test that invalid variant names raise error."""
+        with pytest.raises(ValidationError):
+            VariantConfig(
+                persona="researcher",
+                action="research",
+                generate=["update", "Invalid Name"],
+            )
+
+    def test_variant_config_accepts_optional_cli_tool(self) -> None:
+        """Test that CLI tool is optional."""
+        config = VariantConfig(
+            persona="researcher",
+            action="research",
+            generate=["update"],
+            cli_tool=None,
+        )
+        assert config.cli_tool is None
+
+    def test_variant_config_rejects_empty_cli_tool(self) -> None:
+        """Test that empty CLI tool string raises error."""
+        with pytest.raises(ValueError, match="cannot be empty string"):
+            VariantConfig(
+                persona="researcher",
+                action="research",
+                generate=["update"],
+                cli_tool="",
+            )
+
+        with pytest.raises(ValueError, match="cannot be empty string"):
+            VariantConfig(
+                persona="researcher",
+                action="research",
+                generate=["update"],
+                cli_tool="   ",
             )

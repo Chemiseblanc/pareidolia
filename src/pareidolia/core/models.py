@@ -88,3 +88,31 @@ class ExportConfig:
             raise ValueError("Tool cannot be empty")
         if self.library is not None:
             validate_identifier(self.library, "Library name")
+
+
+@dataclass(frozen=True)
+class VariantConfig:
+    """Configuration for prompt variants.
+
+    Attributes:
+        persona: Persona to use as base
+        action: Action/task to use as base
+        generate: List of variant names to generate
+        cli_tool: Optional specific CLI tool to use
+    """
+
+    persona: str
+    action: str
+    generate: list[str]
+    cli_tool: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate variant configuration."""
+        validate_identifier(self.persona, "Variant persona")
+        validate_identifier(self.action, "Variant action")
+        if not self.generate:
+            raise ValueError("Variant generate list cannot be empty")
+        for variant_name in self.generate:
+            validate_identifier(variant_name, "Variant name")
+        if self.cli_tool is not None and not self.cli_tool.strip():
+            raise ValueError("CLI tool name cannot be empty string")
