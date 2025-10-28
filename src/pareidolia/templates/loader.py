@@ -2,7 +2,11 @@
 
 from pathlib import Path
 
-from pareidolia.core.exceptions import ActionNotFoundError, PersonaNotFoundError
+from pareidolia.core.exceptions import (
+    ActionNotFoundError,
+    PersonaNotFoundError,
+    VariantTemplateNotFoundError,
+)
 from pareidolia.core.models import Action, Example, Persona
 from pareidolia.utils.filesystem import find_files, read_file
 
@@ -215,3 +219,59 @@ class TemplateLoader:
                 examples.add(name)
 
         return sorted(examples)
+
+    def load_variant_template(self, variant_name: str) -> str:
+        """Load a variant template by name.
+
+        Args:
+            variant_name: The variant name (without extension)
+
+        Returns:
+            The variant template content
+
+        Raises:
+            VariantTemplateNotFoundError: If template not found
+        """
+        variant_dir = self.root / "variant"
+
+        # Try extensions in order
+        extensions = [".md.jinja2", ".md.jinja", ".md.j2", ".md"]
+
+        for ext in extensions:
+            candidate = variant_dir / f"{variant_name}{ext}"
+            if candidate.exists():
+                return read_file(candidate)
+
+        raise VariantTemplateNotFoundError(
+            f"Variant template not found: {variant_name}"
+        )
+
+    def list_variants(self) -> list[str]:
+        """List all available variant template names.
+
+        Returns:
+            List of variant names (without extensions)
+        """
+        variant_dir = self.root / "variant"
+        if not variant_dir.exists():
+            return []
+
+        variants = set()
+
+        # Find all variant template files
+        for pattern in ["*.md", "*.md.j2", "*.md.jinja", "*.md.jinja2"]:
+            for path in find_files(variant_dir, pattern):
+                # Remove all extensions to get base name
+                name = path.stem
+                while name.endswith((".md", ".j2", ".jinja", ".jinja2")):
+                    if name.endswith(".md"):
+                        name = name[:-3]
+                    elif name.endswith(".jinja2"):
+                        name = name[:-7]
+                    elif name.endswith(".jinja"):
+                        name = name[:-6]
+                    elif name.endswith(".j2"):
+                        name = name[:-3]
+                variants.add(name)
+
+        return sorted(variants)
