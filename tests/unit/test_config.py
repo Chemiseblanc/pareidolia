@@ -152,6 +152,176 @@ class TestPareidoliaConfigFromDict:
             PareidoliaConfig.from_dict(config_data, Path("/project"))
 
 
+class TestPareidoliaConfigMetadata:
+    """Tests for metadata support in configuration."""
+
+    def test_config_parses_metadata_section(self) -> None:
+        """Test parsing configuration with prompts.metadata section."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                "metadata": {
+                    "description": "Research assistant",
+                    "model": "claude-3.5-sonnet",
+                    "temperature": 0.7,
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        assert config.prompts.metadata is not None
+        assert config.prompts.metadata["description"] == "Research assistant"
+        assert config.prompts.metadata["model"] == "claude-3.5-sonnet"
+        assert config.prompts.metadata["temperature"] == 0.7
+
+    def test_config_handles_missing_metadata_section(self) -> None:
+        """Test that metadata section is optional and defaults to empty dict."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        assert config.prompts.metadata == {}
+
+    def test_config_parses_metadata_with_various_types(self) -> None:
+        """Test that metadata can contain various data types."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                "metadata": {
+                    "description": "Test",
+                    "chat_mode": "extended",
+                    "temperature": 0.7,
+                    "max_tokens": 4096,
+                    "tags": ["analysis", "research"],
+                    "enabled": True,
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        metadata = config.prompts.metadata
+        assert isinstance(metadata["description"], str)
+        assert isinstance(metadata["temperature"], float)
+        assert isinstance(metadata["max_tokens"], int)
+        assert isinstance(metadata["tags"], list)
+        assert isinstance(metadata["enabled"], bool)
+
+    def test_config_parses_nested_metadata(self) -> None:
+        """Test parsing configuration with nested metadata structures."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                "metadata": {
+                    "description": "Nested test",
+                    "settings": {
+                        "model": "claude-3.5-sonnet",
+                        "temperature": 0.7,
+                        "parameters": {
+                            "max_tokens": 4096,
+                            "top_p": 0.9,
+                        },
+                    },
+                    "tags": ["tag1", "tag2"],
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        metadata = config.prompts.metadata
+        assert metadata["settings"]["model"] == "claude-3.5-sonnet"
+        assert metadata["settings"]["parameters"]["max_tokens"] == 4096
+        assert metadata["tags"] == ["tag1", "tag2"]
+
+    def test_config_metadata_flows_to_prompt_config(self) -> None:
+        """Test that metadata flows correctly from config to PromptConfig."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "copilot", "output_dir": "prompts"},
+            "prompts": {
+                "persona": "researcher",
+                "action": "analyze",
+                "variants": ["expand", "refine"],
+                "cli_tool": "claude",
+                "metadata": {
+                    "description": "Analysis tool",
+                    "model": "claude-3.5-sonnet",
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        assert config.prompts.persona == "researcher"
+        assert config.prompts.action == "analyze"
+        assert config.prompts.variants == ["expand", "refine"]
+        assert config.prompts.cli_tool == "claude"
+        assert config.prompts.metadata["description"] == "Analysis tool"
+        assert config.prompts.metadata["model"] == "claude-3.5-sonnet"
+
+    def test_config_empty_metadata_section(self) -> None:
+        """Test that empty metadata section results in empty dict."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                "metadata": {},
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        assert config.prompts.metadata == {}
+
+    def test_config_backward_compatibility_without_metadata(self) -> None:
+        """Test backward compatibility with configs that don't have metadata."""
+        # Old-style config without metadata
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update", "refine", "summarize"],
+                "cli_tool": "claude",
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        assert config.prompts is not None
+        assert config.prompts.persona == "researcher"
+        assert config.prompts.action == "research"
+        assert config.prompts.variants == ["update", "refine", "summarize"]
+        assert config.prompts.cli_tool == "claude"
+        assert config.prompts.metadata == {}
+        assert isinstance(config.prompts.metadata, dict)
+
+
 class TestPareidoliaConfigFromDefaults:
     """Tests for PareidoliaConfig.from_defaults method."""
 
@@ -188,3 +358,28 @@ class TestPareidoliaConfigMergeOverrides:
         assert new_config.prompts.persona == "researcher"
         assert new_config.prompts.action == "research"
         assert new_config.generate.tool == "copilot"
+
+    def test_merge_overrides_preserves_metadata(self) -> None:
+        """Test that merge_overrides preserves metadata in prompts."""
+        config_data = {
+            "pareidolia": {"root": "pareidolia"},
+            "generate": {"tool": "standard", "output_dir": "prompts"},
+            "prompts": {
+                "persona": "researcher",
+                "action": "research",
+                "variants": ["update"],
+                "metadata": {
+                    "description": "Test prompt",
+                    "model": "claude-3.5-sonnet",
+                },
+            },
+        }
+        config = PareidoliaConfig.from_dict(config_data, Path("/project"))
+
+        # Apply overrides
+        new_config = config.merge_overrides(tool="copilot")
+
+        # Metadata should be preserved
+        assert new_config.prompts is not None
+        assert new_config.prompts.metadata["description"] == "Test prompt"
+        assert new_config.prompts.metadata["model"] == "claude-3.5-sonnet"

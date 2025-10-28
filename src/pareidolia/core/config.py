@@ -101,11 +101,15 @@ class PareidoliaConfig:
         prompts: PromptConfig | None = None
         if prompts_data:
             try:
+                # Extract metadata if present, default to empty dict
+                metadata = prompts_data.get("metadata", {})
+
                 prompts = PromptConfig(
                     persona=prompts_data["persona"],
                     action=prompts_data["action"],
                     variants=prompts_data["variants"],
                     cli_tool=prompts_data.get("cli_tool"),
+                    metadata=metadata,
                 )
             except (KeyError, ValueError, ValidationError) as e:
                 raise ConfigurationError(

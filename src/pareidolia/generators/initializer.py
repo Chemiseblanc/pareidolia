@@ -40,6 +40,15 @@ output_dir = "prompts"
 # action = "analyze"
 # variants = ["expand", "refine", "summarize"]
 # cli_tool = "claude"  # Optional: specific CLI tool to use
+
+# Optional: Metadata for tool-specific frontmatter generation
+# Attach arbitrary metadata to prompts for use in templates
+# [prompts.metadata]
+# description = "Comprehensive research analysis assistant"
+# chat_mode = "extended"
+# model = "claude-3.5-sonnet"
+# tags = ["analysis", "research", "report-generation"]
+# temperature = 0.7
 """
 
     # Example persona content
