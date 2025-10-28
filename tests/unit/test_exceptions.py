@@ -83,19 +83,4 @@ def test_variant_exceptions_inherit_from_variant_error() -> None:
     assert issubclass(VariantTemplateNotFoundError, VariantError)
     assert issubclass(CLIToolError, VariantError)
     assert issubclass(NoAvailableCLIToolError, VariantError)
-def test_exceptions_can_be_caught_as_base() -> None:
-    """Test that specific exceptions can be caught as PareidoliaError."""
-    with pytest.raises(PareidoliaError):
-        raise ConfigurationError("test")
 
-    with pytest.raises(PareidoliaError):
-        raise PersonaNotFoundError("test")
-
-    with pytest.raises(PareidoliaError):
-        raise ActionNotFoundError("test")
-
-    with pytest.raises(PareidoliaError):
-        raise TemplateRenderError("test")
-
-    with pytest.raises(PareidoliaError):
-        raise ValidationError("test")

@@ -1,7 +1,6 @@
 """Unit tests for configuration management."""
 
 from pathlib import Path
-from textwrap import dedent
 
 import pytest
 
@@ -124,7 +123,7 @@ class TestPareidoliaConfigFromDict:
         with pytest.raises(ConfigurationError, match="Invalid variants"):
             PareidoliaConfig.from_dict(config_data, Path("/project"))
 
-        # Invalid persona name  
+        # Invalid persona name
         config_data = {
             "pareidolia": {"root": "pareidolia"},
             "export": {"tool": "standard", "output_dir": "prompts"},
