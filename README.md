@@ -69,7 +69,7 @@ The `init` command also creates example files to demonstrate the structure:
 After initialization, you can immediately try generating prompts:
 
 ```bash
-pareidolia export
+pareidolia generate
 ```
 
 This will create prompts in the `prompts/` directory using the example files.
@@ -108,8 +108,8 @@ your-project/
 [pareidolia]
 root = "pareidolia"  # Directory containing persona/action/example folders
 
-[export]
-# Default export settings (can be overridden via CLI)
+[generate]
+# Default generation settings (can be overridden via CLI)
 tool = "copilot"             # or "claude-code", etc.
 library = "promptlib"        # Optional: enables library format when set
 output_dir = "prompts"       # Where to write generated prompts
@@ -162,19 +162,19 @@ Your task is to research the following topic...
 ...
 ```
 
-### Exporting Prompts
+### Generating Prompts
 
-Export prompts using the configured settings:
+Generate prompts using the configured settings:
 
 ```bash
 # Use settings from pareidolia.toml
-pareidolia export
+pareidolia generate
 
 # Override settings via command line
-pareidolia export --tool copilot --output-dir output/
+pareidolia generate --tool copilot --output-dir output/
 
-# Export as a library with tool-specific naming
-pareidolia export --tool copilot --library promptlib
+# Generate as a library with tool-specific naming
+pareidolia generate --tool copilot --library promptlib
 ```
 
 ### Output Examples
@@ -230,7 +230,7 @@ variants = ["update", "refine", "summarize"]  # Variants to generate
 cli_tool = "claude"          # Optional: specific AI tool (auto-detects if omitted)
 ```
 
-When you run `pareidolia export`, variants are automatically generated alongside the base prompt if the exported action matches the configured action.
+When you run `pareidolia generate`, variants are automatically generated alongside the base prompt if the generated action matches the configured action.
 
 ### Variant Templates
 
@@ -302,7 +302,7 @@ Variant generation requires at least one AI CLI tool:
 
 **Tool-specific:** To use a specific tool, set it in your config:
 ```toml
-[variants]
+[prompts]
 cli_tool = "claude"  # Use Claude for variant generation
 ```
 
@@ -354,9 +354,9 @@ action = "research"
 variants = ["update", "refine", "summarize", "expand"]
 ```
 
-3. **Export with variants:**
+3. **Generate with variants:**
 ```bash
-pareidolia export
+pareidolia generate
 ```
 
 This will generate:
@@ -370,7 +370,7 @@ This will generate:
 
 **No variants generated:**
 - Ensure at least one AI CLI tool is installed and available in your PATH
-- Check that the `action` in `[variants]` matches the action being exported
+- Check that the `action` in `[prompts]` matches the action being generated
 - Verify variant templates exist in your `variant/` directory
 
 **CLI tool not found:**

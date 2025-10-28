@@ -193,7 +193,7 @@ class TestGenerateSingleVariant:
         )
         mock_cli_tool.generate_variant.return_value = "Generated content"
 
-        result = variant_generator._generate_single_variant(
+        result = variant_generator.generate_single_variant(
             variant_name="update",
             persona_name="researcher",
             action_name="research",
@@ -226,7 +226,7 @@ class TestGenerateSingleVariant:
         mock_loader.load_variant_template.return_value = template
         mock_cli_tool.generate_variant.return_value = "Generated content"
 
-        variant_generator._generate_single_variant(
+        variant_generator.generate_single_variant(
             variant_name="refine",
             persona_name="developer",
             action_name="code",
@@ -254,7 +254,7 @@ class TestGenerateSingleVariant:
         )
 
         with pytest.raises(VariantTemplateNotFoundError):
-            variant_generator._generate_single_variant(
+            variant_generator.generate_single_variant(
                 variant_name="missing",
                 persona_name="researcher",
                 action_name="research",
@@ -274,7 +274,7 @@ class TestGenerateSingleVariant:
         mock_cli_tool.generate_variant.side_effect = CLIToolError("Tool failed")
 
         with pytest.raises(CLIToolError):
-            variant_generator._generate_single_variant(
+            variant_generator.generate_single_variant(
                 variant_name="update",
                 persona_name="researcher",
                 action_name="research",

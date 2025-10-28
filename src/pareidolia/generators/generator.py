@@ -5,6 +5,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from pareidolia.core.config import PareidoliaConfig
+from pareidolia.core.exceptions import ActionNotFoundError
+from pareidolia.generators.cli_tools import (
+    CLITool,
+    get_available_tools,
+    get_tool_by_name,
+)
 from pareidolia.generators.naming import get_naming_convention
 from pareidolia.generators.prompt import PromptGenerator
 from pareidolia.generators.variants import VariantGenerator
@@ -50,8 +56,8 @@ class Generator:
         self.loader = TemplateLoader(config.root)
         self.composer = PromptComposer(self.loader, Jinja2Engine())
 
-        naming = get_naming_convention(config.generate.tool)
-        self.generator = PromptGenerator(self.composer, naming)
+        self.naming = get_naming_convention(config.generate.tool)
+        self.generator = PromptGenerator(self.composer, self.naming)
         self.variant_generator = VariantGenerator(self.loader, self.composer)
 
     def generate_all(
@@ -81,6 +87,25 @@ class Generator:
                 files_generated=files_generated,
                 errors=errors,
             )
+
+        # Filter out variant actions to avoid duplicates
+        # If an action matches {variant}-{base_action} pattern where:
+        # - base_action is configured in prompts.action
+        # - variant is in prompts.variants
+        # Then skip it as it will be generated as a variant
+        filtered_actions = []
+        for action_name in actions:
+            should_skip = False
+            if self.config.prompts:
+                for variant_name in self.config.prompts.variants:
+                    variant_action = f"{variant_name}-{self.config.prompts.action}"
+                    if action_name == variant_action:
+                        should_skip = True
+                        break
+            if not should_skip:
+                filtered_actions.append(action_name)
+
+        actions = filtered_actions
 
         # Determine persona to use
         if persona_name is None:
@@ -113,6 +138,9 @@ class Generator:
                 if self.config.prompts and action_name == self.config.prompts.action:
                     variant_files = self._generate_variants_for_prompt(
                         base_prompt_path=output_path,
+                        base_action_name=action_name,
+                        persona_name=persona_name,
+                        example_names=example_names,
                         output_dir=output_dir,
                     )
                     files_generated.extend(variant_files)
@@ -130,12 +158,22 @@ class Generator:
     def _generate_variants_for_prompt(
         self,
         base_prompt_path: Path,
+        base_action_name: str,
+        persona_name: str,
+        example_names: list[str] | None,
         output_dir: Path,
     ) -> list[Path]:
         """Generate variants for a base prompt.
 
+        For each variant, first attempts to generate directly from an action template
+        (e.g., action/update-research.md.j2). If the action template doesn't exist,
+        falls back to AI-based transformation using variant templates.
+
         Args:
             base_prompt_path: Path to the generated base prompt file
+            base_action_name: Name of the base action (e.g., "research")
+            persona_name: Persona name used for generation
+            example_names: Example names to include
             output_dir: Output directory for variant files
 
         Returns:
@@ -146,34 +184,100 @@ class Generator:
 
         variant_files: list[Path] = []
 
-        try:
-            # Read the generated base prompt file
-            base_prompt = base_prompt_path.read_text()
+        for variant_name in self.config.prompts.variants:
+            # Construct variant action name (e.g., "update-research")
+            variant_action_name = f"{variant_name}-{base_action_name}"
 
-            # Extract base filename without extension
-            base_filename = base_prompt_path.stem
+            try:
+                # Try to load and generate from action template
+                self.loader.load_action(variant_action_name, persona_name)
 
-            # Generate all variants
-            variants = self.variant_generator.generate_variants(
-                prompt_config=self.config.prompts,
-                base_prompt=base_prompt,
-            )
-
-            # Write each variant to file using verb-noun naming
-            for variant_name, variant_content in variants.items():
-                # Use verb-noun naming: update-research.md
-                variant_filename = f"{variant_name}-{base_filename}.md"
-                variant_path = output_dir / variant_filename
-
-                variant_path.write_text(variant_content)
+                # If it exists, generate it as a normal action
+                variant_path = self.generator.generate(
+                    action_name=variant_action_name,
+                    persona_name=persona_name,
+                    output_dir=output_dir,
+                    library=self.config.generate.library,
+                    example_names=example_names,
+                )
                 variant_files.append(variant_path)
-                logger.info(f"Generated variant file: {variant_filename}")
+                logger.info(
+                    f"Generated variant '{variant_name}' from action template"
+                )
 
-        except Exception as e:
-            # Log error but don't fail the entire generation
-            logger.error(f"Failed to generate variants: {e}")
+            except ActionNotFoundError:
+                # Fall back to AI-based variant generation
+                try:
+                    # Read the generated base prompt file
+                    base_prompt = base_prompt_path.read_text()
+
+                    # Get CLI tool
+                    tool = self._get_cli_tool()
+
+                    # Generate single variant using AI
+                    variant_content = self.variant_generator.generate_single_variant(
+                        variant_name=variant_name,
+                        persona_name=persona_name,
+                        action_name=base_action_name,
+                        base_prompt=base_prompt,
+                        tool=tool,
+                        timeout=60,
+                    )
+
+                    # Generate the variant action name and use the naming convention
+                    # to create the proper filename (with library prefix if needed)
+                    variant_action_name = f"{variant_name}-{base_action_name}"
+                    variant_filename = self.naming.get_filename(
+                        action_name=variant_action_name,
+                        library=self.config.generate.library,
+                    )
+                    variant_path = output_dir / variant_filename
+                    variant_path.write_text(variant_content)
+                    variant_files.append(variant_path)
+                    logger.info(
+                        f"Generated variant '{variant_name}' using AI transformation"
+                    )
+
+                except Exception as e:
+                    logger.error(f"Failed to generate variant {variant_name}: {e}")
+                    # Continue with other variants
 
         return variant_files
+
+    def _get_cli_tool(self) -> CLITool:
+        """Get the CLI tool to use for AI-based variant generation.
+
+        Returns:
+            Selected CLI tool
+
+        Raises:
+            NoAvailableCLIToolError: If no CLI tools available
+        """
+        if self.config.prompts is None:
+            raise ValueError("Prompts config is required")
+
+        if self.config.prompts.cli_tool:
+            # Use specific tool
+            tool = get_tool_by_name(self.config.prompts.cli_tool)
+            if tool is None or not tool.is_available():
+                from pareidolia.core.exceptions import NoAvailableCLIToolError
+
+                raise NoAvailableCLIToolError(
+                    f"CLI tool not available: {self.config.prompts.cli_tool}"
+                )
+            return tool
+
+        # Auto-detect available tools
+        available = get_available_tools()
+        if not available:
+            from pareidolia.core.exceptions import NoAvailableCLIToolError
+
+            raise NoAvailableCLIToolError(
+                "No AI CLI tools available. Install one of: "
+                "codex, gh copilot, claude, gemini"
+            )
+
+        return available[0]
 
     def generate_action(
         self,
@@ -211,6 +315,9 @@ class Generator:
             if self.config.prompts and action_name == self.config.prompts.action:
                 variant_files = self._generate_variants_for_prompt(
                     base_prompt_path=output_path,
+                    base_action_name=action_name,
+                    persona_name=persona_name,
+                    example_names=example_names,
                     output_dir=output_dir,
                 )
                 files_generated.extend(variant_files)

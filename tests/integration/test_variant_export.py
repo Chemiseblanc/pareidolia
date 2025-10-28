@@ -106,7 +106,7 @@ def test_export_with_variants_generates_all_files(
 ):
     """Test that export with variants generates base prompt and all variant files."""
     with patch(
-        "pareidolia.generators.variants.get_available_tools",
+        "pareidolia.generators.generator.get_available_tools",
         return_value=[mock_cli_tool],
     ):
         generator = Generator(config_with_variants)
@@ -174,7 +174,7 @@ def test_export_variants_only_for_matching_action(
     )
 
     with patch(
-        "pareidolia.generators.variants.get_available_tools",
+        "pareidolia.generators.generator.get_available_tools",
         return_value=[mock_cli_tool],
     ):
         generator = Generator(config_with_variants)
@@ -209,7 +209,7 @@ def test_variant_naming_follows_verb_noun_pattern(
 ):
     """Test that variant files follow the verb-noun naming pattern."""
     with patch(
-        "pareidolia.generators.variants.get_available_tools",
+        "pareidolia.generators.generator.get_available_tools",
         return_value=[mock_cli_tool],
     ):
         generator = Generator(config_with_variants)
@@ -245,7 +245,7 @@ def test_export_continues_on_variant_error(
     mock_cli_tool.generate_variant.side_effect = generate_variant_with_error
 
     with patch(
-        "pareidolia.generators.variants.get_available_tools",
+        "pareidolia.generators.generator.get_available_tools",
         return_value=[mock_cli_tool],
     ):
         generator = Generator(config_with_variants)
@@ -282,7 +282,7 @@ def test_export_all_generates_variants_for_matching_actions(
     )
 
     with patch(
-        "pareidolia.generators.variants.get_available_tools",
+        "pareidolia.generators.generator.get_available_tools",
         return_value=[mock_cli_tool],
     ):
         generator = Generator(config_with_variants)
@@ -315,7 +315,7 @@ def test_variant_content_uses_base_prompt(
 ):
     """Test that variant generation receives the base prompt content."""
     with patch(
-        "pareidolia.generators.variants.get_available_tools",
+        "pareidolia.generators.generator.get_available_tools",
         return_value=[mock_cli_tool],
     ):
         generator = Generator(config_with_variants)
@@ -351,7 +351,7 @@ def test_missing_variant_template_does_not_fail_export(
     (variant_dir / "refine.md.j2").unlink()
 
     with patch(
-        "pareidolia.generators.variants.get_available_tools",
+        "pareidolia.generators.generator.get_available_tools",
         return_value=[mock_cli_tool],
     ):
         generator = Generator(config_with_variants)
@@ -401,7 +401,7 @@ def test_variant_generation_with_library_prefix(temp_project_dir, temp_output_di
     mock_tool.generate_variant.return_value = "Variant content"
 
     with patch(
-        "pareidolia.generators.variants.get_available_tools",
+        "pareidolia.generators.generator.get_available_tools",
         return_value=[mock_tool],
     ):
         generator = Generator(config)
@@ -416,6 +416,7 @@ def test_variant_generation_with_library_prefix(temp_project_dir, temp_output_di
     base_file = temp_output_dir / "mylib.research.prompt.md"
     assert base_file.exists()
 
-    # Variant should be update-mylib.research.prompt.md (verb-noun pattern with library)
-    variant_file = temp_output_dir / "update-mylib.research.prompt.md"
+    # Variant should be mylib.update-research.prompt.md
+    # (library prefix applied to full action name)
+    variant_file = temp_output_dir / "mylib.update-research.prompt.md"
     assert variant_file.exists()
