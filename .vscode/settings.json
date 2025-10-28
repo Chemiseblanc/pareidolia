@@ -2,6 +2,14 @@
     "chat.agent.maxRequests": 1000,
     "chat.tools.terminal.enableAutoApprove": true,
     "chat.tools.terminal.autoApprove": {
+        "/\\(.+\\)/": null,
         "/.*/": true
-    }
+    },
+    "chat.tools.edits.autoApprove": {
+        "**/*": true,
+        "**/.vscode/*.json": false,
+        "**/.git/**": false,
+        "**/{package.json,package-lock.json,server.xml,build.rs,web.config,.gitattributes,.env}": false,
+    },
+    "chat.editing.autoAcceptDelay": 10
 }

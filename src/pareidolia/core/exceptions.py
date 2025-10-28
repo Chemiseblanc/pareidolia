@@ -23,3 +23,19 @@ class TemplateRenderError(PareidoliaError):
 
 class ValidationError(PareidoliaError):
     """Raised when input validation fails."""
+
+
+class VariantError(PareidoliaError):
+    """Base exception for variant generation."""
+
+
+class VariantTemplateNotFoundError(VariantError):
+    """Raised when variant template cannot be found."""
+
+
+class CLIToolError(VariantError):
+    """Raised when CLI tool invocation fails."""
+
+
+class NoAvailableCLIToolError(VariantError):
+    """Raised when no CLI tools are available."""
