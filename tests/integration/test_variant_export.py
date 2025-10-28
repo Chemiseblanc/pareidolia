@@ -69,7 +69,7 @@ def config_with_variants(temp_project_dir, temp_output_dir):
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
 
@@ -86,7 +86,7 @@ def config_without_variants(temp_project_dir, temp_output_dir):
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=None,
+        prompt=[],
     )
 
 
@@ -395,7 +395,7 @@ def test_variant_generation_with_library_prefix(temp_project_dir, temp_output_di
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     mock_tool = Mock()
@@ -461,7 +461,7 @@ Library: {{ library }}
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     with patch(

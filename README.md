@@ -105,18 +105,29 @@ model = "claude-3.5-sonnet"
 temperature = 0.7
 tags = ["analysis", "research"]
 
-[prompts]
-# Optional: AI-powered variant generation (see Variant Generation section)
+# AI-powered variant generation (see Variant Generation section)
+# Use [[prompt]] for array of tables - allows multiple prompts
+[[prompt]]
 persona = "researcher"
 action = "research"
 variants = ["update", "refine", "summarize"]
 cli_tool = "claude"          # Optional: auto-detects if omitted
 
 # Per-prompt metadata - overrides global metadata
-[prompts.metadata]
+[prompt.metadata]
 mode = "agent"
 description = "Conducts and reports research findings"
 # Inherits model, temperature, and tags from global [metadata]
+
+# You can define multiple prompts
+[[prompt]]
+persona = "analyst"
+action = "analyze"
+variants = ["expand"]
+
+[prompt.metadata]
+description = "Analysis tool"
+temperature = 0.9  # Overrides global temperature
 ```
 
 ## Output Formats
@@ -153,8 +164,6 @@ prompts/
 
 Pareidolia can automatically generate prompt variants using AI CLI tools. Variants are transformations of base prompts (e.g., "update-research", "refine-research") that are generated during the export process using AI to transform the base prompt according to your variant templates.
 
-The `[prompts]` configuration section controls which variants are generated. The field `variants` contains a list of variant names (like "update", "refine"), while the term "variant" still refers to individual transformation types.
-
 ### What Are Variants?
 
 Variants are specialized versions of a base prompt that focus on different tasks:
@@ -165,17 +174,24 @@ Variants are specialized versions of a base prompt that focus on different tasks
 
 ### Configuration
 
-Add a `[prompts]` section to your `pareidolia.toml`:
+Add `[[prompt]]` sections to your `pareidolia.toml` (use array of tables syntax for multiple prompts):
 
 ```toml
-[prompts]
+# Single prompt with variants
+[[prompt]]
 persona = "researcher"       # Persona to use as base
 action = "research"          # Action to use as base  
 variants = ["update", "refine", "summarize"]  # Variants to generate
 cli_tool = "claude"          # Optional: specific AI tool (auto-detects if omitted)
+
+# You can configure multiple prompts
+[[prompt]]
+persona = "analyst"
+action = "analyze"
+variants = ["expand"]
 ```
 
-When you run `pareidolia generate`, variants are automatically generated alongside the base prompt if the generated action matches the configured action.
+When you run `pareidolia generate`, variants are automatically generated alongside the base prompt for each configured action.
 
 ### Variant Templates
 
@@ -220,15 +236,15 @@ tags = ["default", "analysis"]
 
 #### Per-Prompt Metadata
 
-Override or extend global metadata for specific prompts using `[prompts.metadata]`:
+Override or extend global metadata for specific prompts using `[prompt.metadata]`:
 
 ```toml
-[prompts]
+[[prompt]]
 persona = "researcher"
 action = "analyze"
 variants = ["expand", "refine"]
 
-[prompts.metadata]
+[prompt.metadata]
 mode = "agent"
 model = "Claude Sonnet 4"  # Overrides global model
 description = "Research analysis assistant"
@@ -252,7 +268,12 @@ temperature = 0.7
 max_tokens = 4096
 
 # Per-prompt overrides
-[prompts.metadata]
+[[prompt]]
+persona = "researcher"
+action = "research"
+variants = ["update"]
+
+[prompt.metadata]
 mode = "agent"
 model = "Claude Sonnet 4"
 
@@ -302,12 +323,12 @@ max_tokens = 4096
 tags = ["production", "v1"]
 
 # GitHub Copilot prompt
-[prompts]
+[[prompt]]
 persona = "reviewer"
 action = "review"
 variants = ["refine"]
 
-[prompts.metadata]
+[prompt.metadata]
 description = "Code review assistant"
 tags = ["code-review", "best-practices"]  # Overrides global tags
 # Inherits temperature and max_tokens
@@ -330,7 +351,12 @@ max_tokens: 4096
 model = "claude-3.5-sonnet"
 temperature = 0.7
 
-[prompts.metadata]
+[[prompt]]
+persona = "researcher"
+action = "analyze"
+variants = ["expand"]
+
+[prompt.metadata]
 description = "Research analysis assistant"
 chat_mode = "extended"
 # Inherits model and temperature from global
@@ -355,11 +381,11 @@ version = "1.0"
 author = "Your Name"
 model = "claude-3.5-sonnet"
 
-[prompts]
+[[prompt]]
 persona = "assistant"
 action = "help"
 variants = []
-# No [prompts.metadata] - uses global metadata only
+# No [prompt.metadata] - uses global metadata only
 ```
 
 ### Common Metadata Fields
@@ -417,7 +443,7 @@ cp src/pareidolia/templates/defaults/variant/*.md.j2 pareidolia/variant/
 
 2. **Configure in `pareidolia.toml`:**
 ```toml
-[prompts]
+[[prompt]]
 persona = "researcher"
 action = "research"
 variants = ["update", "refine", "summarize"]
@@ -461,7 +487,7 @@ This will generate:
 
 **No variants generated:**
 - Ensure at least one AI CLI tool is installed and available in your PATH
-- Check that the `action` in `[prompts]` matches the action being generated
+- Check that the `action` in `[[prompt]]` matches the action being generated
 ### Supported CLI Tools
 
 Pareidolia auto-detects the first available AI CLI tool:
@@ -475,7 +501,10 @@ Pareidolia auto-detects the first available AI CLI tool:
 
 Override auto-detection in your config:
 ```toml
-[prompts]
+[[prompt]]
+persona = "researcher"
+action = "research"
+variants = ["update", "refine"]
 cli_tool = "claude"
 ```
 ## Contributing
@@ -496,6 +525,6 @@ cli_tool = "claude"
 [Add authors here]
 ### Troubleshooting Variants
 
-- **No variants generated:** Check that `action` in `[prompts]` matches the action being generated and AI CLI tool is installed
+- **No variants generated:** Check that `action` in `[[prompt]]` matches the action being generated and AI CLI tool is installed
 - **CLI tool not found:** Install a supported tool or specify one with `cli_tool`
 - **Template not found:** Copy defaults: `cp src/pareidolia/templates/defaults/variant/*.md.j2 pareidolia/variant/`

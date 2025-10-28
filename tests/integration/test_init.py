@@ -241,7 +241,8 @@ def test_init_creates_valid_parseable_config(tmp_path: Path) -> None:
 
     # Verify structure
     assert hasattr(config, "generate")
-    assert hasattr(config, "prompts")
+    assert hasattr(config, "prompt")
+    assert isinstance(config.prompt, list)
 
 
 def test_init_config_file_content(tmp_path: Path) -> None:

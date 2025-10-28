@@ -83,12 +83,12 @@ root = "pareidolia"
 tool = "copilot"
 output_dir = "prompts"
 
-[prompts]
+[[prompt]]
 persona = "researcher"
 action = "analyze"
 variants = ["update"]
 
-[prompts.metadata]
+[prompt.metadata]
 description = "Analysis assistant"
 model = "claude-3.5-sonnet"
 temperature = 0.7
@@ -148,15 +148,15 @@ root = "pareidolia"
 tool = "standard"
 output_dir = "prompts"
 
-[prompts]
+[[prompt]]
 persona = "tester"
 action = "test"
 variants = ["refine"]
 
-[prompts.metadata]
+[prompt.metadata]
 tags = ["tag1", "tag2", "tag3"]
 
-[prompts.metadata.settings]
+[prompt.metadata.settings]
 model = "gpt-4"
 temperature = 0.8
 """

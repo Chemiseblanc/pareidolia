@@ -1,6 +1,6 @@
 """Configuration management for pareidolia."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -22,13 +22,13 @@ class PareidoliaConfig:
         root: Root directory containing persona/action/example folders
         generate: Generate configuration
         metadata: Global metadata dictionary (merged with per-prompt metadata)
-        prompts: Optional prompt variant generation configuration
+        prompt: List of prompt variant generation configurations
     """
 
     root: Path
     generate: GenerateConfig
     metadata: dict[str, Any]
-    prompts: PromptConfig | None = None
+    prompt: list[PromptConfig] = field(default_factory=list)
 
     @classmethod
     def from_file(cls, config_path: Path) -> "PareidoliaConfig":
@@ -103,34 +103,45 @@ class PareidoliaConfig:
         if not isinstance(global_metadata, dict):
             raise ConfigurationError("metadata section must be a dictionary")
 
-        # Parse prompts section (optional)
-        prompts_data = config_data.get("prompts")
-        prompts: PromptConfig | None = None
-        if prompts_data:
+        # Parse prompt array (optional)
+        prompt_data_list = config_data.get("prompt", [])
+        prompts: list[PromptConfig] = []
+
+        if not isinstance(prompt_data_list, list):
+            raise ConfigurationError("prompt section must be an array of tables")
+
+        for idx, prompt_data in enumerate(prompt_data_list):
+            if not isinstance(prompt_data, dict):
+                raise ConfigurationError(
+                    f"prompt[{idx}] must be a table/dictionary"
+                )
+
             try:
                 # Extract per-prompt metadata, default to empty dict
-                prompt_metadata = prompts_data.get("metadata", {})
+                prompt_metadata = prompt_data.get("metadata", {})
 
                 # Merge global and per-prompt metadata (per-prompt overrides global)
                 merged_metadata = {**global_metadata, **prompt_metadata}
 
-                prompts = PromptConfig(
-                    persona=prompts_data["persona"],
-                    action=prompts_data["action"],
-                    variants=prompts_data["variants"],
-                    cli_tool=prompts_data.get("cli_tool"),
-                    metadata=merged_metadata,
+                prompts.append(
+                    PromptConfig(
+                        persona=prompt_data["persona"],
+                        action=prompt_data["action"],
+                        variants=prompt_data["variants"],
+                        cli_tool=prompt_data.get("cli_tool"),
+                        metadata=merged_metadata,
+                    )
                 )
             except (KeyError, ValueError, ValidationError) as e:
                 raise ConfigurationError(
-                    f"Invalid prompts configuration: {e}"
+                    f"Invalid prompt[{idx}] configuration: {e}"
                 ) from e
 
         return cls(
             root=root,
             generate=generate,
             metadata=global_metadata,
-            prompts=prompts,
+            prompt=prompts,
         )
 
     @classmethod
@@ -159,7 +170,7 @@ class PareidoliaConfig:
         output_path = project_root / output_dir
         generate = GenerateConfig(tool=tool, library=library, output_dir=output_path)
 
-        return cls(root=root, generate=generate, metadata={}, prompts=None)
+        return cls(root=root, generate=generate, metadata={}, prompt=[])
 
     def merge_overrides(
         self,
@@ -193,5 +204,5 @@ class PareidoliaConfig:
             root=self.root,
             generate=generate,
             metadata=self.metadata,
-            prompts=self.prompts,
+            prompt=self.prompt,
         )

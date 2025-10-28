@@ -6,6 +6,7 @@ from pathlib import Path
 
 from pareidolia.core.config import PareidoliaConfig
 from pareidolia.core.exceptions import ActionNotFoundError
+from pareidolia.core.models import PromptConfig
 from pareidolia.generators.cli_tools import (
     CLITool,
     get_available_tools,
@@ -94,18 +95,20 @@ class Generator:
 
         # Filter out variant actions to avoid duplicates
         # If an action matches {variant}-{base_action} pattern where:
-        # - base_action is configured in prompts.action
-        # - variant is in prompts.variants
+        # - base_action is configured in any prompt.action
+        # - variant is in that prompt.variants
         # Then skip it as it will be generated as a variant
         filtered_actions = []
         for action_name in actions:
             should_skip = False
-            if self.config.prompts:
-                for variant_name in self.config.prompts.variants:
-                    variant_action = f"{variant_name}-{self.config.prompts.action}"
+            for prompt_config in self.config.prompt:
+                for variant_name in prompt_config.variants:
+                    variant_action = f"{variant_name}-{prompt_config.action}"
                     if action_name == variant_action:
                         should_skip = True
                         break
+                if should_skip:
+                    break
             if not should_skip:
                 filtered_actions.append(action_name)
 
@@ -129,24 +132,32 @@ class Generator:
         # Generate prompts for each action
         for action_name in actions:
             try:
+                # Find matching prompt config for this action (if any)
+                matching_prompt_config = None
+                for prompt_config in self.config.prompt:
+                    if action_name == prompt_config.action:
+                        matching_prompt_config = prompt_config
+                        break
+
                 output_path = self.generator.generate(
                     action_name=action_name,
                     persona_name=persona_name,
                     output_dir=output_dir,
                     library=self.config.generate.library,
                     example_names=example_names,
-                    prompt_config=self.config.prompts,
+                    prompt_config=matching_prompt_config,
                 )
                 files_generated.append(output_path)
 
                 # Generate variants if configured and action matches
-                if self.config.prompts and action_name == self.config.prompts.action:
+                if matching_prompt_config:
                     variant_files = self._generate_variants_for_prompt(
                         base_prompt_path=output_path,
                         base_action_name=action_name,
                         persona_name=persona_name,
                         example_names=example_names,
                         output_dir=output_dir,
+                        prompt_config=matching_prompt_config,
                     )
                     files_generated.extend(variant_files)
 
@@ -167,6 +178,7 @@ class Generator:
         persona_name: str,
         example_names: list[str] | None,
         output_dir: Path,
+        prompt_config: PromptConfig,
     ) -> list[Path]:
         """Generate variants for a base prompt.
 
@@ -180,16 +192,14 @@ class Generator:
             persona_name: Persona name used for generation
             example_names: Example names to include
             output_dir: Output directory for variant files
+            prompt_config: The prompt configuration for this action
 
         Returns:
             List of generated variant file paths
         """
-        if self.config.prompts is None:
-            return []
-
         variant_files: list[Path] = []
 
-        for variant_name in self.config.prompts.variants:
+        for variant_name in prompt_config.variants:
             # Construct variant action name (e.g., "update-research")
             variant_action_name = f"{variant_name}-{base_action_name}"
 
@@ -204,7 +214,7 @@ class Generator:
                     output_dir=output_dir,
                     library=self.config.generate.library,
                     example_names=example_names,
-                    prompt_config=self.config.prompts,
+                    prompt_config=prompt_config,
                 )
                 variant_files.append(variant_path)
                 logger.info(
@@ -218,7 +228,7 @@ class Generator:
                     base_prompt = base_prompt_path.read_text()
 
                     # Get CLI tool
-                    tool = self._get_cli_tool()
+                    tool = self._get_cli_tool(prompt_config)
 
                     # Generate single variant using AI
                     variant_content = self.variant_generator.generate_single_variant(
@@ -228,7 +238,7 @@ class Generator:
                         base_prompt=base_prompt,
                         tool=tool,
                         timeout=60,
-                        prompt_config=self.config.prompts,
+                        prompt_config=prompt_config,
                     )
 
                     # Generate the variant action name and use the naming convention
@@ -251,8 +261,11 @@ class Generator:
 
         return variant_files
 
-    def _get_cli_tool(self) -> CLITool:
+    def _get_cli_tool(self, prompt_config: PromptConfig) -> CLITool:
         """Get the CLI tool to use for AI-based variant generation.
+
+        Args:
+            prompt_config: The prompt configuration to check for cli_tool setting
 
         Returns:
             Selected CLI tool
@@ -260,17 +273,14 @@ class Generator:
         Raises:
             NoAvailableCLIToolError: If no CLI tools available
         """
-        if self.config.prompts is None:
-            raise ValueError("Prompts config is required")
-
-        if self.config.prompts.cli_tool:
+        if prompt_config.cli_tool:
             # Use specific tool
-            tool = get_tool_by_name(self.config.prompts.cli_tool)
+            tool = get_tool_by_name(prompt_config.cli_tool)
             if tool is None or not tool.is_available():
                 from pareidolia.core.exceptions import NoAvailableCLIToolError
 
                 raise NoAvailableCLIToolError(
-                    f"CLI tool not available: {self.config.prompts.cli_tool}"
+                    f"CLI tool not available: {prompt_config.cli_tool}"
                 )
             return tool
 
@@ -308,6 +318,13 @@ class Generator:
         # Get output directory from config (already a Path)
         output_dir = self.config.generate.output_dir
 
+        # Find matching prompt config for this action (if any)
+        matching_prompt_config = None
+        for prompt_config in self.config.prompt:
+            if action_name == prompt_config.action:
+                matching_prompt_config = prompt_config
+                break
+
         try:
             output_path = self.generator.generate(
                 action_name=action_name,
@@ -315,18 +332,19 @@ class Generator:
                 output_dir=output_dir,
                 library=self.config.generate.library,
                 example_names=example_names,
-                prompt_config=self.config.prompts,
+                prompt_config=matching_prompt_config,
             )
             files_generated.append(output_path)
 
             # Generate variants if configured and action matches
-            if self.config.prompts and action_name == self.config.prompts.action:
+            if matching_prompt_config:
                 variant_files = self._generate_variants_for_prompt(
                     base_prompt_path=output_path,
                     base_action_name=action_name,
                     persona_name=persona_name,
                     example_names=example_names,
                     output_dir=output_dir,
+                    prompt_config=matching_prompt_config,
                 )
                 files_generated.extend(variant_files)
 

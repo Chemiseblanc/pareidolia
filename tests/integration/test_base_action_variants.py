@@ -75,7 +75,7 @@ def test_variant_generated_from_action_template(temp_project_dir, temp_output_di
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     # Generate
@@ -129,7 +129,7 @@ def test_variant_falls_back_to_ai_when_no_action_template(
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     # Mock CLI tool
@@ -194,7 +194,7 @@ def test_mixed_direct_and_ai_variants(temp_project_dir, temp_output_dir):
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     # Mock CLI tool for AI fallback
@@ -263,7 +263,7 @@ def test_all_variants_from_action_templates(temp_project_dir, temp_output_dir):
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     # Generate without mocking any CLI tools
@@ -314,7 +314,7 @@ def test_direct_variant_with_library_prefix(temp_project_dir, temp_output_dir):
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     generator = Generator(config)
@@ -365,7 +365,7 @@ def test_generate_all_with_mixed_variants(temp_project_dir, temp_output_dir):
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     # Mock CLI tool for refine (AI fallback)
@@ -443,7 +443,7 @@ def test_direct_variant_with_examples(temp_project_dir, temp_output_dir):
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     generator = Generator(config)
@@ -490,7 +490,7 @@ def test_ai_fallback_continues_on_cli_tool_error(temp_project_dir, temp_output_d
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     # Mock CLI tool that raises an error
@@ -553,7 +553,7 @@ def test_logging_indicates_generation_strategy(
         root=temp_project_dir,
         generate=generate_config,
         metadata={},
-        prompts=prompt_config,
+        prompt=[prompt_config],
     )
 
     # Mock CLI tool for AI fallback
