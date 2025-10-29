@@ -1,7 +1,6 @@
 """Validation utilities for pareidolia."""
 
 import re
-from pathlib import Path
 from typing import Any
 
 from pareidolia.core.exceptions import ValidationError
@@ -46,42 +45,6 @@ def validate_identifier(name: str, field_name: str = "identifier") -> None:
         raise ValidationError(
             f"{field_name} must not end with a hyphen or underscore: {name}"
         )
-
-
-def validate_path(path: Path, must_exist: bool = False) -> None:
-    """Validate a file path.
-
-    Args:
-        path: The path to validate
-        must_exist: If True, the path must exist
-
-    Raises:
-        ValidationError: If the path is invalid
-    """
-    if must_exist and not path.exists():
-        raise ValidationError(f"Path does not exist: {path}")
-
-    # Check if path is absolute or can be resolved
-    try:
-        path.resolve()
-    except (OSError, RuntimeError) as e:
-        raise ValidationError(f"Invalid path: {path}") from e
-
-
-def validate_directory(path: Path, must_exist: bool = False) -> None:
-    """Validate a directory path.
-
-    Args:
-        path: The directory path to validate
-        must_exist: If True, the directory must exist
-
-    Raises:
-        ValidationError: If the directory is invalid
-    """
-    validate_path(path, must_exist=must_exist)
-
-    if path.exists() and not path.is_dir():
-        raise ValidationError(f"Path is not a directory: {path}")
 
 
 def validate_config_schema(config: dict[str, Any]) -> None:

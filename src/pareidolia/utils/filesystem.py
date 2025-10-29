@@ -61,20 +61,3 @@ def find_files(directory: Path, pattern: str) -> list[Path]:
         raise FileNotFoundError(f"Directory not found: {directory}")
 
     return sorted(directory.glob(pattern))
-
-
-def is_writable(path: Path) -> bool:
-    """Check if a path is writable.
-
-    Args:
-        path: Path to check
-
-    Returns:
-        True if the path is writable, False otherwise
-    """
-    if path.exists():
-        return path.is_file() and path.stat().st_mode & 0o200 != 0
-
-    # Check parent directory if file doesn't exist
-    parent = path.parent
-    return parent.exists() and parent.is_dir() and parent.stat().st_mode & 0o200 != 0

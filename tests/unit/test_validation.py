@@ -1,15 +1,11 @@
 """Unit tests for validation utilities."""
 
-from pathlib import Path
-
 import pytest
 
 from pareidolia.core.exceptions import ValidationError
 from pareidolia.utils.validation import (
     validate_config_schema,
-    validate_directory,
     validate_identifier,
-    validate_path,
 )
 
 
@@ -44,50 +40,6 @@ class TestValidateIdentifier:
         """Test that invalid identifiers raise ValidationError."""
         with pytest.raises(ValidationError):
             validate_identifier(invalid_name)
-
-
-class TestValidatePath:
-    """Tests for path validation."""
-
-    def test_validate_existing_path(self, temp_dir: Path) -> None:
-        """Test validation of an existing path."""
-        test_file = temp_dir / "test.txt"
-        test_file.write_text("test")
-
-        validate_path(test_file, must_exist=True)  # Should not raise
-
-    def test_validate_nonexistent_path_not_required(self, temp_dir: Path) -> None:
-        """Test validation of non-existent path when not required to exist."""
-        test_file = temp_dir / "nonexistent.txt"
-        validate_path(test_file, must_exist=False)  # Should not raise
-
-    def test_validate_nonexistent_path_required(self, temp_dir: Path) -> None:
-        """Test that validation fails for non-existent path when required."""
-        test_file = temp_dir / "nonexistent.txt"
-
-        with pytest.raises(ValidationError, match="does not exist"):
-            validate_path(test_file, must_exist=True)
-
-
-class TestValidateDirectory:
-    """Tests for directory validation."""
-
-    def test_validate_existing_directory(self, temp_dir: Path) -> None:
-        """Test validation of an existing directory."""
-        validate_directory(temp_dir, must_exist=True)  # Should not raise
-
-    def test_validate_nonexistent_directory_not_required(self, temp_dir: Path) -> None:
-        """Test validation of non-existent directory when not required."""
-        test_dir = temp_dir / "nonexistent"
-        validate_directory(test_dir, must_exist=False)  # Should not raise
-
-    def test_validate_file_as_directory(self, temp_dir: Path) -> None:
-        """Test that validation fails when path is a file, not a directory."""
-        test_file = temp_dir / "test.txt"
-        test_file.write_text("test")
-
-        with pytest.raises(ValidationError, match="not a directory"):
-            validate_directory(test_file, must_exist=True)
 
 
 class TestValidateConfigSchema:
