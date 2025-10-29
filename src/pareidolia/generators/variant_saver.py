@@ -40,7 +40,7 @@ class VariantSaver:
             Tuple of (file_path, was_saved, error_message)
             - file_path: Path where the file would be/was saved
             - was_saved: True if file was written, False if skipped
-            - error_message: Error message if failed, None if successful
+            - error_message: Error message if failed, None if successful or skipped
         """
         # Get the target path
         file_path = self._get_template_path(
@@ -49,7 +49,7 @@ class VariantSaver:
 
         # Check if file exists and force is False
         if file_path.exists() and not force:
-            return (file_path, False, "File exists")
+            return (file_path, False, "File exists")  # Skipped, not an error
 
         # Load persona content for template conversion
         try:
