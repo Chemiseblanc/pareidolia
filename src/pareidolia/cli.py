@@ -387,11 +387,16 @@ def handle_save(
         errors = []
 
         for path, (was_saved, error_msg) in results.items():
-            if error_msg:
-                errors.append((path, error_msg))
-            elif was_saved:
+            if was_saved:
                 saved.append(path)
+            elif error_msg == "File exists":
+                # File exists is a skip, not an error
+                skipped.append(path)
+            elif error_msg:
+                # Other error messages are real errors
+                errors.append((path, error_msg))
             else:
+                # was_saved=False, no error_msg - shouldn't happen but treat as skip
                 skipped.append(path)
 
         # Display results
