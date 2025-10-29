@@ -93,7 +93,10 @@ class TestSaveCommand:
                 variant_name="update",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nUpdate.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nUpdate."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -102,7 +105,10 @@ class TestSaveCommand:
                 variant_name="refine",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nRefine.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nRefine."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -130,7 +136,10 @@ class TestSaveCommand:
                 variant_name="update",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nResearch update.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nResearch update."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -139,7 +148,10 @@ class TestSaveCommand:
                 variant_name="update",
                 action_name="analyze",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nAnalyze update.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nAnalyze update."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -167,7 +179,10 @@ class TestSaveCommand:
                 variant_name="update",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nUpdate research.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nUpdate research."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -176,7 +191,10 @@ class TestSaveCommand:
                 variant_name="refine",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nRefine research.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nRefine research."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -185,7 +203,10 @@ class TestSaveCommand:
                 variant_name="update",
                 action_name="analyze",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nUpdate analyze.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nUpdate analyze."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -257,7 +278,10 @@ class TestSaveCommand:
                 variant_name="update",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nNew content.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nNew content."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -293,7 +317,10 @@ class TestSaveCommand:
                 variant_name="update",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nNew content.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nNew content."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -339,8 +366,8 @@ class TestSaveCommand:
 
         # Note: This won't actually cache new variants since we're not using
         # a real AI generator, but it verifies the function can check the cache
-        result = handle_generate(config, None, None, None)
-        # Result depends on actual generation, but cache check works
+        handle_generate(config, None, None, None)
+        # The generate command can check the cache
         assert cache.has_variants()
 
     def test_end_to_end_generate_cache_save_verify(
@@ -438,7 +465,10 @@ class TestSaveCommand:
                 variant_name="update",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nUpdate.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nUpdate."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -447,7 +477,10 @@ class TestSaveCommand:
                 variant_name="refine",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nRefine.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nRefine."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -456,7 +489,10 @@ class TestSaveCommand:
                 variant_name="summarize",
                 action_name="research",
                 persona_name="researcher",
-                content="You are an expert researcher with deep analytical skills.\n\nSummarize.",
+                content=(
+                    "You are an expert researcher with deep analytical "
+                    "skills.\n\nSummarize."
+                ),
                 generated_at=datetime.now(),
             )
         )
@@ -472,3 +508,361 @@ class TestSaveCommand:
         assert (action_dir / "update-research.md.j2").exists()
         assert (action_dir / "refine-research.md.j2").exists()
         assert not (action_dir / "summarize-research.md.j2").exists()
+
+    def test_full_workflow_generate_save_regenerate(
+        self, sample_project: Path
+    ) -> None:
+        """Test full workflow: generate with AI → save → regenerate uses saved template.
+
+        This test verifies that:
+        1. Initial generation uses AI (CLI tool) for variant
+        2. Variant is cached and can be saved
+        3. Saved template is created in correct location
+        4. Second generation uses saved template (not AI)
+        5. Both outputs are equivalent
+        """
+        from unittest.mock import Mock, patch
+
+        from pareidolia.generators.generator import Generator
+
+        config_file = sample_project / "pareidolia.toml"
+        config = PareidoliaConfig.from_file(config_file)
+
+        # Update config to include variant
+        config_content = config_file.read_text()
+        config_content += (
+            '\n[[prompt]]\n'
+            'persona = "researcher"\n'
+            'action = "research"\n'
+            'variants = ["update"]\n'
+        )
+        config_file.write_text(config_content)
+        config = PareidoliaConfig.from_file(config_file)
+
+        # Create variant template for AI transformation
+        variant_dir = sample_project / "pareidolia" / "variant"
+        variant_dir.mkdir(exist_ok=True)
+        (variant_dir / "update.md.j2").write_text(
+            "Transform the following prompt to focus on updating existing work.\n"
+            "Action: {{ action_name }}\n"
+            "Persona: {{ persona_name }}\n"
+        )
+
+        output_dir = sample_project / "prompts"
+        output_dir.mkdir(exist_ok=True)
+
+        # PHASE 1: Generate with AI
+        mock_tool = Mock()
+        mock_tool.name = "mock_tool"
+        mock_tool.is_available.return_value = True
+        ai_generated_content = (
+            "You are an expert researcher with deep analytical skills.\n"
+            "You approach problems methodically and thoroughly.\n\n"
+            "UPDATE: Review and revise your existing research with new findings."
+        )
+        mock_tool.generate_variant.return_value = ai_generated_content
+
+        with patch(
+            "pareidolia.generators.generator.get_available_tools",
+            return_value=[mock_tool],
+        ):
+            generator = Generator(config)
+            result = generator.generate_action(
+                action_name="research",
+                persona_name="researcher",
+            )
+
+        # Verify initial generation succeeded
+        assert result.success
+        assert len(result.files_generated) == 2  # base + variant
+        assert mock_tool.generate_variant.called
+
+        # Verify variant was cached
+        cache = VariantCache()
+        assert cache.count() == 1
+        cached_variants = cache.get_by_variant("update")
+        assert len(cached_variants) == 1
+        assert cached_variants[0].action_name == "research"
+
+        # PHASE 2: Save cached variant
+        from pareidolia.cli import handle_save
+
+        save_result = handle_save(config, None, None, False, False)
+        assert save_result == 0
+
+        # Verify template file exists
+        action_dir = sample_project / "pareidolia" / "action"
+        template_file = action_dir / "update-research.md.j2"
+        assert template_file.exists()
+
+        # Verify template has Jinja2 placeholder
+        template_content = template_file.read_text()
+        assert "{{ persona }}" in template_content
+        assert "UPDATE: Review and revise" in template_content
+
+        # PHASE 3: Clear output and cache, then regenerate
+        # Clear output directory
+        for file in output_dir.iterdir():
+            file.unlink()
+
+        # Clear cache
+        cache.clear()
+        assert cache.count() == 0
+
+        # Reset mock call count
+        mock_tool.generate_variant.reset_mock()
+
+        # Regenerate - should use saved template, NOT AI
+        with patch(
+            "pareidolia.generators.generator.get_available_tools",
+            return_value=[mock_tool],
+        ):
+            generator = Generator(config)
+            result2 = generator.generate_action(
+                action_name="research",
+                persona_name="researcher",
+            )
+
+        # Verify regeneration succeeded
+        assert result2.success
+        assert len(result2.files_generated) == 2  # base + variant
+
+        # CRITICAL: Verify AI was NOT called on second generation
+        assert not mock_tool.generate_variant.called
+
+        # Verify variant file exists and has same content
+        variant_file = output_dir / "update-research.prompt.md"
+        assert variant_file.exists()
+        regenerated_content = variant_file.read_text()
+
+        # Both should contain the same essential content
+        assert "UPDATE: Review and revise" in regenerated_content
+        assert "expert researcher" in regenerated_content
+
+    def test_saved_template_produces_deterministic_output(
+        self, sample_project: Path
+    ) -> None:
+        """Test that saved templates produce identical output on multiple regenerations.
+
+        Once a variant is saved as a template, regenerating should produce
+        exactly the same output every time (no AI variability).
+        """
+        from unittest.mock import Mock, patch
+
+        from pareidolia.generators.generator import Generator
+
+        config_file = sample_project / "pareidolia.toml"
+        config = PareidoliaConfig.from_file(config_file)
+
+        # Add variant configuration
+        config_content = config_file.read_text()
+        config_content += (
+            '\n[[prompt]]\n'
+            'persona = "researcher"\n'
+            'action = "research"\n'
+            'variants = ["refine"]\n'
+        )
+        config_file.write_text(config_content)
+        config = PareidoliaConfig.from_file(config_file)
+
+        # Create variant template
+        variant_dir = sample_project / "pareidolia" / "variant"
+        variant_dir.mkdir(exist_ok=True)
+        (variant_dir / "refine.md.j2").write_text(
+            "Refine and improve the prompt quality.\n"
+        )
+
+        output_dir = sample_project / "prompts"
+        output_dir.mkdir(exist_ok=True)
+
+        # Generate with AI
+        mock_tool = Mock()
+        mock_tool.name = "mock_tool"
+        mock_tool.is_available.return_value = True
+        ai_content = (
+            "You are an expert researcher with deep analytical skills.\n"
+            "You approach problems methodically and thoroughly.\n\n"
+            "REFINED: Conduct a thorough and systematic investigation."
+        )
+        mock_tool.generate_variant.return_value = ai_content
+
+        with patch(
+            "pareidolia.generators.generator.get_available_tools",
+            return_value=[mock_tool],
+        ):
+            generator = Generator(config)
+            generator.generate_action(
+                action_name="research",
+                persona_name="researcher",
+            )
+
+        # Save variant
+        from pareidolia.cli import handle_save
+
+        handle_save(config, None, None, False, False)
+
+        # Verify template exists
+        action_dir = sample_project / "pareidolia" / "action"
+        template_file = action_dir / "refine-research.md.j2"
+        assert template_file.exists()
+
+        # Clear cache and output
+        VariantCache().clear()
+        for file in output_dir.iterdir():
+            file.unlink()
+
+        # Regenerate multiple times and verify identical output
+        outputs = []
+        for _ in range(3):
+            # Clear previous output
+            for file in output_dir.iterdir():
+                file.unlink()
+
+            # Regenerate
+            generator = Generator(config)
+            generator.generate_action(
+                action_name="research",
+                persona_name="researcher",
+            )
+
+            # Read output
+            variant_file = output_dir / "refine-research.prompt.md"
+            assert variant_file.exists()
+            outputs.append(variant_file.read_text())
+
+        # All outputs should be identical
+        assert len(outputs) == 3
+        assert outputs[0] == outputs[1]
+        assert outputs[1] == outputs[2]
+        assert "REFINED: Conduct a thorough" in outputs[0]
+
+    def test_saved_template_with_examples(self, sample_project: Path) -> None:
+        """Test that saved templates work correctly with examples.
+
+        Verifies that:
+        1. Variant generation with examples works
+        2. Saved template preserves example handling
+        3. Regeneration with examples produces correct output
+        """
+        from unittest.mock import Mock, patch
+
+        from pareidolia.generators.generator import Generator
+
+        config_file = sample_project / "pareidolia.toml"
+        config = PareidoliaConfig.from_file(config_file)
+
+        # Add variant configuration
+        config_content = config_file.read_text()
+        config_content += (
+            '\n[[prompt]]\n'
+            'persona = "researcher"\n'
+            'action = "research"\n'
+            'variants = ["summarize"]\n'
+        )
+        config_file.write_text(config_content)
+        config = PareidoliaConfig.from_file(config_file)
+
+        # Create additional example
+        example_dir = sample_project / "pareidolia" / "example"
+        (example_dir / "methodology.md").write_text(
+            "# Methodology Example\n\n"
+            "1. Gather data\n"
+            "2. Analyze findings\n"
+            "3. Draw conclusions\n"
+        )
+
+        # Create variant template
+        variant_dir = sample_project / "pareidolia" / "variant"
+        variant_dir.mkdir(exist_ok=True)
+        (variant_dir / "summarize.md.j2").write_text(
+            "Create a concise summary of the prompt.\n"
+        )
+
+        output_dir = sample_project / "prompts"
+        output_dir.mkdir(exist_ok=True)
+
+        # PHASE 1: Generate with AI and examples
+        mock_tool = Mock()
+        mock_tool.name = "mock_tool"
+        mock_tool.is_available.return_value = True
+
+        # AI should receive base prompt with examples
+        def mock_generate(
+            variant_prompt: str, base_prompt: str, timeout: int = 60
+        ) -> str:
+            # Verify examples are in base prompt
+            assert "Research Report Example" in base_prompt
+            assert "Methodology Example" in base_prompt
+            return (
+                "You are an expert researcher with deep analytical skills.\n"
+                "You approach problems methodically and thoroughly.\n\n"
+                "SUMMARY: Provide a brief overview of the research topic.\n\n"
+                "Examples:\n"
+                "# Research Report Example\n"
+                "# Methodology Example\n"
+            )
+
+        mock_tool.generate_variant.side_effect = mock_generate
+        mock_tool.is_available.return_value = True
+
+        with patch(
+            "pareidolia.generators.generator.get_available_tools",
+            return_value=[mock_tool],
+        ):
+            generator = Generator(config)
+            result = generator.generate_action(
+                action_name="research",
+                persona_name="researcher",
+                example_names=["report-format", "methodology"],
+            )
+
+        assert result.success
+        assert mock_tool.generate_variant.called
+
+        # Verify variant has examples
+        variant_file = output_dir / "summarize-research.prompt.md"
+        assert variant_file.exists()
+        variant_content = variant_file.read_text()
+        assert "Research Report Example" in variant_content
+        assert "Methodology Example" in variant_content
+
+        # PHASE 2: Save variant
+        from pareidolia.cli import handle_save
+
+        handle_save(config, None, None, False, False)
+
+        # Verify template exists and has example placeholder
+        action_dir = sample_project / "pareidolia" / "action"
+        template_file = action_dir / "summarize-research.md.j2"
+        assert template_file.exists()
+        template_content = template_file.read_text()
+        assert "{{ persona }}" in template_content
+        # Should have example handling logic
+        assert "SUMMARY: Provide a brief overview" in template_content
+
+        # PHASE 3: Regenerate with same examples
+        VariantCache().clear()
+        for file in output_dir.iterdir():
+            file.unlink()
+
+        mock_tool.generate_variant.reset_mock()
+
+        # Regenerate with examples (should use template, not AI)
+        generator = Generator(config)
+        result2 = generator.generate_action(
+            action_name="research",
+            persona_name="researcher",
+            example_names=["report-format", "methodology"],
+        )
+
+        assert result2.success
+        # Verify AI was NOT called
+        assert not mock_tool.generate_variant.called
+
+        # Verify regenerated variant has examples
+        variant_file2 = output_dir / "summarize-research.prompt.md"
+        assert variant_file2.exists()
+        regenerated_content = variant_file2.read_text()
+        assert "Research Report Example" in regenerated_content
+        assert "Methodology Example" in regenerated_content
+        assert "SUMMARY: Provide a brief overview" in regenerated_content
