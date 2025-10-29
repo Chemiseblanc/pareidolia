@@ -43,6 +43,30 @@ rather than the "how".>
 
 - Bullet points are acceptable
 - Use hyphens or asterisks for bullets
+
+Co-authored-by: <Current User Name> <user@email.com>
+```
+
+#### Commit Authorship
+
+AI agents should set commits to be authored by Copilot with proper attribution:
+
+- **Author**: Set to `Copilot <Copilot@users.noreply.github.com>`
+- **Co-authored-by**: Add trailer with current git user's name and email
+
+This can be done with:
+```bash
+# Get current user info
+CURRENT_USER=$(git config user.name)
+CURRENT_EMAIL=$(git config user.email)
+
+# Commit with Copilot as author and add co-author trailer
+git commit --author="Copilot <Copilot@users.noreply.github.com>" \
+  -m "<component>: <short summary>
+
+<Detailed description>
+
+Co-authored-by: $CURRENT_USER <$CURRENT_EMAIL>"
 ```
 
 **Components** might include:
@@ -66,6 +90,8 @@ prompts with consistent prefixes for different AI tools.
 - Add library subparser to CLI
 - Implement naming convention mapping for tools
 - Add validation for library names
+
+Co-authored-by: Matthew Gibson <matt@mgibson.ca>
 ```
 
 ```
@@ -74,6 +100,8 @@ templates: integrate jinja2 template engine
 Add Jinja2 support for compiling persona, task, and example fragments
 into complete prompts. This provides flexible composition and enables
 variable substitution in templates.
+
+Co-authored-by: Matthew Gibson <matt@mgibson.ca>
 ```
 
 #### Commit Best Practices
