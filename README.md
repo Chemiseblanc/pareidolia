@@ -508,6 +508,141 @@ variants = ["update", "refine"]
 cli_tool = "claude"
 ```
 
+## Saving AI-Generated Variants
+
+When variants are generated using AI transformation (rather than from existing action templates), they are cached in memory during the CLI session. You can persist these AI-generated variants as action templates for future reuse using the `save` command.
+
+### Why Save Variants?
+
+Saving AI-generated variants provides several benefits:
+
+- **Speed**: Future generations use templates instead of AI, making them much faster
+- **Determinism**: Template-based generation produces consistent output every time
+- **Cost**: Avoid repeated AI API calls for the same transformations
+- **Customization**: Edit saved templates to fine-tune variants to your exact needs
+- **Offline**: Once saved, variants work without an AI CLI tool
+
+### Usage
+
+#### Basic Save
+
+After generating prompts with AI variants, save them to templates:
+
+```bash
+# Generate prompts (including AI variants)
+pareidolia generate
+
+# Output:
+# Successfully generated 4 prompt(s):
+#   - prompts/research.prompt.md
+#   - prompts/update-research.prompt.md
+#   - prompts/refine-research.prompt.md
+#   - prompts/summarize-research.prompt.md
+#
+# 3 variant(s) cached. Use 'pareidolia save' to persist them as templates.
+
+# Save all cached variants as action templates
+pareidolia save
+
+# Output:
+# Successfully saved 3 template(s):
+#   ✓ pareidolia/action/update-research.md.j2
+#   ✓ pareidolia/action/refine-research.md.j2
+#   ✓ pareidolia/action/summarize-research.md.j2
+```
+
+#### List Cached Variants
+
+View what variants are in the cache without saving:
+
+```bash
+pareidolia save --list
+
+# Output:
+# Cached Variants:
+#   Variant    Action      Persona     Generated
+#   ---------  ----------  ----------  -------------------
+#   update     research    researcher  2024-10-29 10:30:00
+#   refine     research    researcher  2024-10-29 10:30:01
+#   summarize  research    researcher  2024-10-29 10:30:02
+```
+
+#### Filter by Variant
+
+Save only specific variant type(s):
+
+```bash
+# Save only "update" variants
+pareidolia save --variant update
+
+# Save multiple specific variants
+pareidolia save --variant update refine
+```
+
+#### Filter by Action
+
+Save only variants for a specific action:
+
+```bash
+# Save only variants for "research" action
+pareidolia save --action research
+```
+
+#### Combined Filters
+
+Combine filters to save specific variants for specific actions:
+
+```bash
+# Save only "update" variants for "research" action
+pareidolia save --variant update --action research
+```
+
+#### Force Overwrite
+
+By default, `save` will skip existing template files. Use `--force` to overwrite:
+
+```bash
+# Overwrite existing templates
+pareidolia save --force
+
+# Output:
+# Successfully saved 3 template(s):
+#   ✓ pareidolia/action/update-research.md.j2 (overwritten)
+#   ✓ pareidolia/action/refine-research.md.j2 (overwritten)
+#   ✓ pareidolia/action/summarize-research.md.j2 (overwritten)
+```
+
+### How It Works
+
+1. **During Generation**: When variants are generated via AI (not from existing templates), they are automatically cached in memory
+2. **Caching**: The cache stores the variant name, action name, persona name, content, and metadata
+3. **Saving**: The `save` command converts cached variants to Jinja2 templates by replacing persona content with `{{ persona }}` placeholders
+4. **Template Location**: Saved templates are written to `pareidolia/action/{variant}-{action}.md.j2`
+5. **Future Generations**: Once saved, the template is used instead of AI for that variant
+
+### Example Workflow
+
+```bash
+# 1. Generate prompts with AI variants
+pareidolia generate
+
+# 2. Review the generated variants in your output directory
+cat prompts/update-research.prompt.md
+
+# 3. If satisfied, save the variant as a template
+pareidolia save --variant update
+
+# 4. Future generations will use the saved template (fast and deterministic)
+pareidolia generate  # No AI call for "update" variant!
+```
+
+### Notes
+
+- Only AI-generated variants are cached (variants from existing templates are not cached since they're already saved)
+- The cache is in-memory only and cleared when the CLI exits
+- Saved templates can be edited like any other action template
+- Once saved, variants become part of your project's source templates
+
 ## MCP Server
 
 Pareidolia includes an MCP (Model Context Protocol) server that exposes prompts to AI assistants and tools through a standardized protocol. This enables real-time prompt generation and discovery within AI development environments.
