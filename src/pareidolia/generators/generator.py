@@ -2,6 +2,7 @@
 
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from pareidolia.core.config import PareidoliaConfig
@@ -14,6 +15,7 @@ from pareidolia.generators.cli_tools import (
 )
 from pareidolia.generators.naming import get_naming_convention
 from pareidolia.generators.prompt import PromptGenerator
+from pareidolia.generators.variant_cache import CachedVariant, VariantCache
 from pareidolia.generators.variants import VariantGenerator
 from pareidolia.templates.composer import PromptComposer
 from pareidolia.templates.engine import Jinja2Engine
@@ -253,6 +255,21 @@ class Generator:
                     variant_files.append(variant_path)
                     logger.info(
                         f"Generated variant '{variant_name}' using AI transformation"
+                    )
+
+                    # Cache the AI-generated variant
+                    cached_variant = CachedVariant(
+                        variant_name=variant_name,
+                        action_name=base_action_name,
+                        persona_name=persona_name,
+                        content=variant_content,
+                        generated_at=datetime.now(),
+                        metadata=prompt_config.metadata,
+                    )
+                    VariantCache().add(cached_variant)
+                    logger.info(
+                        f"Cached AI-generated variant '{variant_name}' "
+                        f"for action '{base_action_name}'"
                     )
 
                 except Exception as e:

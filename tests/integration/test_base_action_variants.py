@@ -6,6 +6,13 @@ import pytest
 
 from pareidolia.core.config import GenerateConfig, PareidoliaConfig, PromptConfig
 from pareidolia.generators.generator import Generator
+from pareidolia.generators.variant_cache import VariantCache
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Clear the variant cache before each test."""
+    VariantCache().clear()
 
 
 @pytest.fixture
@@ -584,3 +591,189 @@ def test_logging_indicates_generation_strategy(
     assert any(
         "AI transformation" in msg for msg in log_messages
     ), "Missing log for AI transformation"
+
+
+def test_ai_variant_is_cached(temp_project_dir, temp_output_dir):
+    """Test that AI-generated variants are cached."""
+    # No action template for variant (will use AI)
+    generate_config = GenerateConfig(
+        tool="copilot",
+        library=None,
+        output_dir=temp_output_dir,
+    )
+
+    prompt_config = PromptConfig(
+        persona="researcher",
+        action="research",
+        variants=["update"],
+        cli_tool=None,
+        metadata={"project": "test-project", "version": "1.0"},
+    )
+
+    config = PareidoliaConfig(
+        root=temp_project_dir,
+        generate=generate_config,
+        metadata={},
+        prompt=[prompt_config],
+    )
+
+    # Mock CLI tool
+    mock_tool = Mock()
+    mock_tool.name = "mock_tool"
+    mock_tool.is_available.return_value = True
+    mock_tool.generate_variant.return_value = "AI generated variant content"
+
+    cache = VariantCache()
+
+    with patch(
+        "pareidolia.generators.generator.get_available_tools",
+        return_value=[mock_tool],
+    ):
+        generator = Generator(config)
+        result = generator.generate_action(
+            action_name="research",
+            persona_name="researcher",
+        )
+
+    # Verify generation succeeded
+    assert result.success
+
+    # Verify variant was cached
+    assert cache.count() == 1
+
+    cached_variants = cache.get_all()
+    assert len(cached_variants) == 1
+
+    cached = cached_variants[0]
+    assert cached.variant_name == "update"
+    assert cached.action_name == "research"
+    assert cached.persona_name == "researcher"
+    assert cached.content == "AI generated variant content"
+    assert cached.metadata == {"project": "test-project", "version": "1.0"}
+    assert cached.generated_at is not None
+
+
+def test_template_variant_not_cached(temp_project_dir, temp_output_dir):
+    """Test that template-based variants are NOT cached."""
+    # Create action template for variant (direct generation)
+    action_dir = temp_project_dir / "action"
+    (action_dir / "update-research.md.j2").write_text(
+        "{{ persona }}\n\nUpdate variant from template."
+    )
+
+    generate_config = GenerateConfig(
+        tool="copilot",
+        library=None,
+        output_dir=temp_output_dir,
+    )
+
+    prompt_config = PromptConfig(
+        persona="researcher",
+        action="research",
+        variants=["update"],
+        cli_tool=None,
+    )
+
+    config = PareidoliaConfig(
+        root=temp_project_dir,
+        generate=generate_config,
+        metadata={},
+        prompt=[prompt_config],
+    )
+
+    cache = VariantCache()
+
+    generator = Generator(config)
+    result = generator.generate_action(
+        action_name="research",
+        persona_name="researcher",
+    )
+
+    # Verify generation succeeded
+    assert result.success
+
+    # Verify variant was NOT cached (template-based)
+    assert cache.count() == 0
+    assert not cache.has_variants()
+
+
+def test_multiple_variants_cached_in_single_generation(
+    temp_project_dir, temp_output_dir
+):
+    """Test that multiple AI variants are all cached in a single generation."""
+    # Create variant templates for AI fallback
+    variant_dir = temp_project_dir / "variant"
+    (variant_dir / "expand.md.j2").write_text(
+        "Transform to expand variant for {{ action_name }}"
+    )
+
+    # No action templates for variants (all will use AI)
+    generate_config = GenerateConfig(
+        tool="copilot",
+        library=None,
+        output_dir=temp_output_dir,
+    )
+
+    prompt_config = PromptConfig(
+        persona="researcher",
+        action="research",
+        variants=["update", "refine", "expand"],
+        cli_tool=None,
+        metadata={"category": "analysis"},
+    )
+
+    config = PareidoliaConfig(
+        root=temp_project_dir,
+        generate=generate_config,
+        metadata={},
+        prompt=[prompt_config],
+    )
+
+    # Mock CLI tool
+    mock_tool = Mock()
+    mock_tool.name = "mock_tool"
+    mock_tool.is_available.return_value = True
+
+    # Return different content for each variant
+    mock_tool.generate_variant.side_effect = [
+        "Update variant content",
+        "Refine variant content",
+        "Expand variant content",
+    ]
+
+    cache = VariantCache()
+
+    with patch(
+        "pareidolia.generators.generator.get_available_tools",
+        return_value=[mock_tool],
+    ):
+        generator = Generator(config)
+        result = generator.generate_action(
+            action_name="research",
+            persona_name="researcher",
+        )
+
+    # Verify generation succeeded
+    assert result.success
+
+    # Verify all 3 variants were cached
+    assert cache.count() == 3
+
+    # Verify each variant
+    update_variants = cache.get_by_variant("update")
+    assert len(update_variants) == 1
+    assert update_variants[0].content == "Update variant content"
+    assert update_variants[0].metadata == {"category": "analysis"}
+
+    refine_variants = cache.get_by_variant("refine")
+    assert len(refine_variants) == 1
+    assert refine_variants[0].content == "Refine variant content"
+
+    expand_variants = cache.get_by_variant("expand")
+    assert len(expand_variants) == 1
+    assert expand_variants[0].content == "Expand variant content"
+
+    # Verify all are for the same action
+    research_variants = cache.get_by_action("research")
+    assert len(research_variants) == 3
+
