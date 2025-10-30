@@ -260,6 +260,125 @@ def load_persona(name: str) -> Persona:
     # ... implementation
 ```
 
+## Extensibility Patterns
+
+### Tool Adapter Pattern
+
+Pareidolia uses the **Tool Adapter Pattern** for supporting different export formats (e.g., Copilot, Claude Code, standard). This pattern enables easy addition of new export types without modifying existing code.
+
+#### Design
+
+- **Base Class**: `ToolAdapter` (ABC with auto-registration)
+- **Protocol**: `NamingConvention` (for type hints)
+- **Registry**: Class-level dictionary for dynamic discovery
+- **Auto-registration**: Via `__init_subclass__` hook
+
+#### Adding a New Export Format
+
+To add support for a new tool (e.g., "cursor"):
+
+```python
+from abc import ABC
+from pathlib import Path
+from pareidolia.generators.naming import ToolAdapter
+
+
+class CursorNaming(ToolAdapter):
+    """Cursor IDE naming convention."""
+
+    @property
+    def name(self) -> str:
+        """Tool identifier used in config and CLI."""
+        return "cursor"
+
+    @property
+    def description(self) -> str:
+        """Human-readable description for help text."""
+        return "Cursor IDE format (.cursor.md)"
+
+    @property
+    def file_extension(self) -> str:
+        """File extension including the dot."""
+        return ".cursor.md"
+
+    def get_filename(self, action_name: str, library: str | None = None) -> str:
+        """Generate filename for this tool's convention.
+        
+        Args:
+            action_name: The action name
+            library: Optional library name for bundling
+            
+        Returns:
+            Generated filename
+        """
+        # Example: prefix with library if provided
+        if library:
+            return f"{library}_{action_name}.cursor.md"
+        return f"{action_name}.cursor.md"
+
+    def get_output_path(
+        self,
+        output_dir: Path,
+        action_name: str,
+        library: str | None = None,
+    ) -> Path:
+        """Generate full output path.
+        
+        Args:
+            output_dir: Base output directory
+            action_name: The action name
+            library: Optional library name
+            
+        Returns:
+            Complete output path
+        """
+        filename = self.get_filename(action_name, library)
+        # Example: create subdirectory if library is specified
+        if library:
+            return output_dir / "cursor" / library / filename
+        return output_dir / filename
+```
+
+**That's it!** The adapter is automatically registered when the class is defined. Users can now use `--tool cursor` in the CLI, and it will appear in the help text automatically.
+
+#### Key Features
+
+- **Auto-registration**: Subclasses register themselves on import
+- **Validation**: Invalid tool names show helpful error with available options
+- **Dynamic help**: CLI `--tool` help text lists all registered adapters
+- **Type-safe**: Adapters satisfy `NamingConvention` protocol
+- **Testable**: Registry can be cleared for test isolation
+
+#### Testing New Adapters
+
+```python
+import pytest
+from pathlib import Path
+from pareidolia.generators.naming import ToolAdapter
+
+
+def test_cursor_adapter_registered():
+    """Verify cursor adapter is registered."""
+    adapter = ToolAdapter.get_adapter("cursor")
+    assert adapter.name == "cursor"
+
+
+def test_cursor_naming_with_library():
+    """Test cursor naming convention with library."""
+    adapter = ToolAdapter.get_adapter("cursor")
+    filename = adapter.get_filename("research", library="mylib")
+    assert filename == "mylib_research.cursor.md"
+
+
+def test_cursor_output_path():
+    """Test cursor output path generation."""
+    adapter = ToolAdapter.get_adapter("cursor")
+    path = adapter.get_output_path(
+        Path("/output"), "research", library="mylib"
+    )
+    assert path == Path("/output/cursor/mylib/mylib_research.cursor.md")
+```
+
 ## Summary
 
 - Write clean, typed, tested Python code
@@ -268,5 +387,6 @@ def load_persona(name: str) -> Persona:
 - Maintain high test coverage
 - Run linters before committing
 - Focus on modularity and separation of concerns
+- Use established patterns (e.g., Tool Adapter) for extensibility
 
 This ensures the Pareidolia codebase remains maintainable, well-tested, and easy to understand.

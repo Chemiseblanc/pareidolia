@@ -17,6 +17,22 @@ def create_parser() -> argparse.ArgumentParser:
     Returns:
         Configured argument parser
     """
+    # Import ToolAdapter to get available tools for help text
+    from pareidolia.generators.naming import ToolAdapter
+
+    # Build dynamic tool list for help text
+    available_tools = ToolAdapter.list_available()
+    tool_descriptions = []
+    for tool_name in sorted(available_tools.keys()):
+        adapter = available_tools[tool_name]
+        tool_descriptions.append(
+            f"{tool_name}: {adapter.description}"
+        )
+    tools_help_text = (
+        "Target tool for prompt generation. Available tools:\n"
+        + "\n".join(f"  • {desc}" for desc in tool_descriptions)
+    )
+
     parser = argparse.ArgumentParser(
         prog="pareidolia",
         description=(
@@ -66,7 +82,7 @@ def create_parser() -> argparse.ArgumentParser:
     generate_parser.add_argument(
         "--tool",
         type=str,
-        help="Target tool (e.g., 'copilot', 'claude-code', 'standard')",
+        help=tools_help_text,
     )
 
     generate_parser.add_argument(

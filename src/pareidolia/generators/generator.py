@@ -7,7 +7,7 @@ from pathlib import Path
 from pareidolia.core.config import PareidoliaConfig
 from pareidolia.core.exceptions import ActionNotFoundError
 from pareidolia.core.models import PromptConfig
-from pareidolia.generators.naming import get_naming_convention
+from pareidolia.generators.naming import ToolAdapter
 from pareidolia.generators.prompt import PromptGenerator
 from pareidolia.generators.variants import VariantGenerator
 from pareidolia.templates.composer import PromptComposer
@@ -66,7 +66,7 @@ class Generator:
             self.loader, Jinja2Engine(), config.generate
         )
 
-        self.naming = get_naming_convention(config.generate.tool)
+        self.naming = ToolAdapter.get_adapter(config.generate.tool)
         self.generator = PromptGenerator(self.composer, self.naming)
         self.variant_generator = VariantGenerator(
             self.loader, self.composer, config.generate

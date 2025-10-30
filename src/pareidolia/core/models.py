@@ -87,6 +87,16 @@ class GenerateConfig:
         """Validate generate configuration after initialization."""
         if not self.tool.strip():
             raise ValueError("Tool cannot be empty")
+
+        # Validate tool is supported
+        from pareidolia.generators.naming import ToolAdapter
+
+        if not ToolAdapter.is_supported(self.tool):
+            available = ", ".join(sorted(ToolAdapter.list_available().keys()))
+            raise ValueError(
+                f"Unsupported tool '{self.tool}'. Available tools: {available}"
+            )
+
         if self.library is not None:
             validate_identifier(self.library, "Library name")
 
