@@ -46,6 +46,13 @@ select = [
 ]
 ignore = []
 
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=pareidolia",
+    "--cov-report=term-missing"
+]
+testpaths = ["tests"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
