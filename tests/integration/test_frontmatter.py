@@ -5,7 +5,7 @@ from typing import Any
 
 from pareidolia.core.models import GenerateConfig
 from pareidolia.templates.composer import PromptComposer
-from pareidolia.templates.loader import TemplateLoader
+from conftest import create_template_loader
 
 
 class MetadataDict(dict):
@@ -73,7 +73,7 @@ Perform analysis.
         )
 
         # Generate prompt
-        loader = TemplateLoader(root)
+        loader = create_template_loader(root)
         composer = PromptComposer(loader, generate_config=generate_config)
         result = composer.compose(
             action_name="analyze",
@@ -127,7 +127,7 @@ Perform analysis.
         )
 
         # Generate prompt
-        loader = TemplateLoader(root)
+        loader = create_template_loader(root)
         composer = PromptComposer(loader, generate_config=generate_config)
         result = composer.compose(
             action_name="analyze",
@@ -183,7 +183,7 @@ description: {{ metadata.description }}
         )
 
         # Generate prompt
-        loader = TemplateLoader(root)
+        loader = create_template_loader(root)
         composer = PromptComposer(loader, generate_config=generate_config)
         result = composer.compose(
             action_name="analyze",
@@ -245,7 +245,7 @@ config:
         )
 
         # Generate prompt
-        loader = TemplateLoader(root)
+        loader = create_template_loader(root)
         composer = PromptComposer(loader, generate_config=generate_config)
         result = composer.compose(
             action_name="analyze",
@@ -296,7 +296,7 @@ tags: {{ metadata.tags | tojson }}
         )
 
         # Generate prompt
-        loader = TemplateLoader(root)
+        loader = create_template_loader(root)
         composer = PromptComposer(loader, generate_config=generate_config)
         result = composer.compose(
             action_name="analyze",
@@ -353,7 +353,7 @@ Review the following code.
         )
 
         # Generate prompt
-        loader = TemplateLoader(root)
+        loader = create_template_loader(root)
         composer = PromptComposer(loader, generate_config=generate_config)
         result = composer.compose(
             action_name="review",
@@ -417,7 +417,7 @@ temperature: {{ metadata.temperature }}
         )
 
         # Generate prompt
-        loader = TemplateLoader(root)
+        loader = create_template_loader(root)
         composer = PromptComposer(loader, generate_config=generate_config)
         result = composer.compose(
             action_name="analyze",
@@ -463,7 +463,7 @@ Perform analysis.
         )
 
         # Generate prompt without prompt_config
-        loader = TemplateLoader(root)
+        loader = create_template_loader(root)
         composer = PromptComposer(loader, generate_config=generate_config)
         result = composer.compose(
             action_name="analyze",

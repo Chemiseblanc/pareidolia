@@ -91,16 +91,16 @@ class TestMCPServerIntegration:
 
     def test_server_creation_and_initialization(self, temp_project: Path) -> None:
         """Test creating and initializing MCP server with real project."""
-        server = create_server(config_dir=temp_project, mode="cli")
+        server = create_server(source_uri=str(temp_project))
 
         assert server is not None
-        assert server.config.config_dir == temp_project
+        assert server.config.source_uri == str(temp_project)
         assert server.pareidolia_config.root == temp_project / "pareidolia"
         assert server.generator is not None
 
     def test_server_loads_project_structure(self, temp_project: Path) -> None:
         """Test that server correctly loads project structure."""
-        server = create_server(config_dir=temp_project, mode="cli")
+        server = create_server(source_uri=str(temp_project))
 
         # Verify personas are loaded
         persona_names = server.generator.loader.list_personas()
@@ -140,7 +140,7 @@ class TestMCPServerIntegration:
 
         mock_mcp.prompt = prompt_decorator
 
-        create_server(config_dir=temp_project, mode="cli")
+        create_server(source_uri=str(temp_project))
 
         # Verify expected prompts were registered based on config
         # Config has 2 [[prompt]] blocks:
@@ -167,20 +167,16 @@ class TestMCPServerIntegration:
         (pareidolia_root / "actions").mkdir(parents=True)
         (pareidolia_root / "examples").mkdir(parents=True)
 
-        server = create_server(config_dir=tmp_path, mode="cli")
+        server = create_server(source_uri=str(tmp_path))
 
         assert server.pareidolia_config.generate.tool == "standard"
         assert server.pareidolia_config.root == tmp_path / "pareidolia"
 
     def test_server_modes(self, temp_project: Path) -> None:
-        """Test server can be created in different modes."""
-        # CLI mode
-        cli_server = create_server(config_dir=temp_project, mode="cli")
-        assert cli_server.config.mode == "cli"
-
-        # MCP mode
-        mcp_server = create_server(config_dir=temp_project, mode="mcp")
-        assert mcp_server.config.mode == "mcp"
+        """Test server is created in MCP mode by default."""
+        # create_server always uses MCP mode
+        server = create_server(source_uri=str(temp_project))
+        assert server.config.mode == "mcp"
 
     @patch("pareidolia.mcp.server.FastMCP")
     def test_server_with_no_prompts_configured(
@@ -223,7 +219,7 @@ output_dir = "prompts"
         mock_mcp.prompt = prompt_decorator
 
         # Server should initialize without error
-        server = create_server(config_dir=tmp_path, mode="cli")
+        server = create_server(source_uri=str(tmp_path))
 
         # No prompts should be registered
         assert len(registered_prompts) == 0
@@ -235,7 +231,7 @@ class TestMCPPromptsIntegration:
 
     def test_prompt_discovery_with_real_config(self, temp_project: Path) -> None:
         """Test that prompts are discovered from real config file."""
-        server = create_server(config_dir=temp_project, mode="cli")
+        server = create_server(source_uri=str(temp_project))
 
         # Verify config has prompts
         assert len(server.pareidolia_config.prompt) == 2
@@ -255,7 +251,7 @@ class TestMCPPromptsIntegration:
 
     def test_base_prompt_generation_with_real_data(self, temp_project: Path) -> None:
         """Test base prompt generation with real project data."""
-        server = create_server(config_dir=temp_project, mode="cli")
+        server = create_server(source_uri=str(temp_project))
 
         # Access the loader to verify personas and actions exist
         persona_names = server.generator.loader.list_personas()
@@ -277,7 +273,7 @@ class TestMCPPromptsIntegration:
 
     def test_prompt_metadata_from_config(self, temp_project: Path) -> None:
         """Test that prompt metadata is loaded from config."""
-        server = create_server(config_dir=temp_project, mode="cli")
+        server = create_server(source_uri=str(temp_project))
 
         # Check metadata from prompt configs
         research_prompt = server.pareidolia_config.prompt[0]

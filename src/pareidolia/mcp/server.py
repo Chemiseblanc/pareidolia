@@ -8,7 +8,6 @@ from typing import Literal
 from fastmcp import FastMCP
 
 from pareidolia.core.config import PareidoliaConfig
-from pareidolia.generators.generator import Generator
 from pareidolia.mcp.prompts import register_prompts
 
 
@@ -17,11 +16,11 @@ class MCPServerConfig:
     """Configuration for MCP server.
 
     Attributes:
-        config_dir: Directory containing Pareidolia configuration
+        source_uri: Source URI for prompt templates
         mode: Server mode - 'cli' for testing, 'mcp' for MCP protocol
     """
 
-    config_dir: Path
+    source_uri: str
     mode: Literal["cli", "mcp"] = "cli"
 
 
@@ -48,19 +47,18 @@ class PareidoliaMCPServer:
             ConfigurationError: If configuration cannot be loaded
         """
         self.config = config
+
+        # Load config and initialize generator
         self.pareidolia_config = self._load_pareidolia_config()
 
         # Initialize FastMCP server
         self.mcp = FastMCP("pareidolia-prompts")
 
-        # Initialize generator
-        self.generator = Generator(self.pareidolia_config)
-
-        # Register MCP prompts
+        # Register MCP prompts (generator is set in _load_pareidolia_config)
         register_prompts(self.mcp, self.generator, self.pareidolia_config)
 
     def _load_pareidolia_config(self) -> PareidoliaConfig:
-        """Load Pareidolia configuration from the config directory.
+        """Load Pareidolia configuration from source URI.
 
         Returns:
             Loaded Pareidolia configuration
@@ -68,15 +66,53 @@ class PareidoliaMCPServer:
         Raises:
             ConfigurationError: If configuration cannot be loaded
         """
-        config_file = self.config.config_dir / "pareidolia.toml"
-
-        if config_file.exists():
-            return PareidoliaConfig.from_file(config_file)
-        else:
-            # Use defaults with specified root
-            return PareidoliaConfig.from_defaults(
-                project_root=self.config.config_dir
+        try:
+            # Use PareidoliaConfig.from_source() to load config and filesystem
+            config, filesystem, template_root = PareidoliaConfig.from_source(
+                self.config.source_uri
             )
+
+            # Create TemplateLoader with filesystem
+            from pareidolia.templates.loader import TemplateLoader
+
+            loader = TemplateLoader(filesystem, template_root)
+
+            # Create Generator with loader
+            from pareidolia.generators.generator import Generator
+
+            self.generator = Generator(config, loader)
+
+            return config
+
+        except Exception as e:
+            # Fall back to defaults if config cannot be loaded
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to load config from {self.config.source_uri}: {e}")
+            logger.warning("Using default configuration")
+
+            # Parse source_uri to get base path for defaults
+            from pathlib import Path
+
+            from pareidolia.utils.filesystem import LocalFileSystem, parse_source_uri
+
+            try:
+                fs = parse_source_uri(self.config.source_uri)
+                if isinstance(fs, LocalFileSystem):
+                    base_path = fs.base_path
+                else:
+                    base_path = Path.cwd()
+            except Exception:
+                base_path = Path.cwd()
+
+            # Return default config with appropriate base path
+            config = PareidoliaConfig.from_defaults(base_path)
+
+            # Initialize generator with defaults
+            from pareidolia.generators.generator import Generator
+            self.generator = Generator(config)
+
+            return config
 
     def run(self) -> None:
         """Run the MCP server in the configured mode.
@@ -101,15 +137,12 @@ class PareidoliaMCPServer:
 
 
 def create_server(
-    config_dir: Path | None = None,
-    mode: Literal["cli", "mcp"] = "cli",
+    source_uri: str | None = None,
 ) -> PareidoliaMCPServer:
     """Create an MCP server instance.
 
     Args:
-        config_dir: Directory containing Pareidolia configuration.
-                   Defaults to current directory.
-        mode: Server mode ('cli' or 'mcp')
+        source_uri: Source URI for templates (defaults to current directory)
 
     Returns:
         Initialized MCP server
@@ -117,8 +150,9 @@ def create_server(
     Raises:
         ConfigurationError: If configuration cannot be loaded
     """
-    if config_dir is None:
-        config_dir = Path.cwd()
+    if source_uri is None:
+        source_uri = str(Path.cwd())
 
-    server_config = MCPServerConfig(config_dir=config_dir, mode=mode)
+    # Always use 'mcp' mode for production
+    server_config = MCPServerConfig(source_uri=source_uri, mode="mcp")
     return PareidoliaMCPServer(server_config)

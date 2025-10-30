@@ -3,7 +3,6 @@
 import argparse
 import sys
 from pathlib import Path
-from typing import Literal
 
 from pareidolia import __version__
 from pareidolia.core.config import PareidoliaConfig
@@ -45,12 +44,13 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     parser.add_argument(
-        "--config-dir",
-        type=Path,
-        default=Path.cwd(),
+        "--source-dir",
+        type=str,
+        default=str(Path.cwd()),
         help=(
-            "Directory containing .pareidolia.toml "
-            "(for MCP mode, default: current directory)"
+            "Source directory or URI for prompt templates. "
+            "Supports local paths, file:// URIs, and github:// URIs "
+            "(e.g., github://org/repo@branch). Defaults to current directory."
         ),
     )
 
@@ -194,11 +194,11 @@ def handle_init(directory: str, no_scaffold: bool) -> int:
         return 1
 
 
-def handle_mcp(config_dir: Path) -> int:
+def handle_mcp(source_dir: str) -> int:
     """Handle MCP server mode.
 
     Args:
-        config_dir: Directory containing .pareidolia.toml
+        source_dir: Source URI for templates
 
     Returns:
         Exit code (0 for success, 1 for failure)
@@ -206,11 +206,8 @@ def handle_mcp(config_dir: Path) -> int:
     try:
         from pareidolia.mcp.server import create_server
 
-        # Determine mode - use 'mcp' mode by default
-        mode: Literal["cli", "mcp"] = "mcp"
-
-        # Create and run server
-        server = create_server(config_dir=config_dir, mode=mode)
+        # Create and run server with source_dir
+        server = create_server(source_dir)
         server.run()
         return 0
     except Exception as e:
@@ -281,7 +278,7 @@ def main() -> int:
 
     # Handle MCP mode
     if args.mcp:
-        return handle_mcp(args.config_dir)
+        return handle_mcp(args.source_dir)
 
     # Show help if no command specified
     if not args.command:

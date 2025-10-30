@@ -13,21 +13,21 @@ class TestMCPServerConfig:
 
     def test_server_config_creation_with_defaults(self, tmp_path: Path) -> None:
         """Test server config creation with default values."""
-        config = MCPServerConfig(config_dir=tmp_path)
+        config = MCPServerConfig(source_uri=str(tmp_path))
 
-        assert config.config_dir == tmp_path
+        assert config.source_uri == str(tmp_path)
         assert config.mode == "cli"
 
     def test_server_config_creation_with_mcp_mode(self, tmp_path: Path) -> None:
         """Test server config creation with MCP mode."""
-        config = MCPServerConfig(config_dir=tmp_path, mode="mcp")
+        config = MCPServerConfig(source_uri=str(tmp_path), mode="mcp")
 
-        assert config.config_dir == tmp_path
+        assert config.source_uri == str(tmp_path)
         assert config.mode == "mcp"
 
     def test_server_config_is_frozen(self, tmp_path: Path) -> None:
         """Test that server config is immutable."""
-        config = MCPServerConfig(config_dir=tmp_path)
+        config = MCPServerConfig(source_uri=str(tmp_path))
 
         with pytest.raises(AttributeError):
             config.mode = "mcp"  # type: ignore
@@ -58,7 +58,7 @@ output_dir = "prompts"
         (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
         (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
-        server_config = MCPServerConfig(config_dir=tmp_path)
+        server_config = MCPServerConfig(source_uri=str(tmp_path))
         server = PareidoliaMCPServer(server_config)
 
         assert server.pareidolia_config.root == tmp_path / "pareidolia"
@@ -73,10 +73,9 @@ output_dir = "prompts"
         (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
         (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
-        server_config = MCPServerConfig(config_dir=tmp_path)
+        server_config = MCPServerConfig(source_uri=str(tmp_path))
         server = PareidoliaMCPServer(server_config)
 
-        assert server.pareidolia_config.root == tmp_path / "pareidolia"
         assert server.pareidolia_config.generate.tool == "standard"
 
     def test_server_initialization_creates_mcp_instance(self, tmp_path: Path) -> None:
@@ -86,7 +85,7 @@ output_dir = "prompts"
         (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
         (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
-        server_config = MCPServerConfig(config_dir=tmp_path)
+        server_config = MCPServerConfig(source_uri=str(tmp_path))
         server = PareidoliaMCPServer(server_config)
 
         assert server.mcp is not None
@@ -99,7 +98,7 @@ output_dir = "prompts"
         (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
         (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
-        server_config = MCPServerConfig(config_dir=tmp_path)
+        server_config = MCPServerConfig(source_uri=str(tmp_path))
         server = PareidoliaMCPServer(server_config)
 
         assert server.generator is not None
@@ -118,7 +117,7 @@ output_dir = "prompts"
         mock_mcp = Mock()
         mock_fastmcp_class.return_value = mock_mcp
 
-        server_config = MCPServerConfig(config_dir=tmp_path, mode="cli")
+        server_config = MCPServerConfig(source_uri=str(tmp_path), mode="cli")
         server = PareidoliaMCPServer(server_config)
         server.run()
 
@@ -139,7 +138,7 @@ output_dir = "prompts"
         mock_mcp = Mock()
         mock_fastmcp_class.return_value = mock_mcp
 
-        server_config = MCPServerConfig(config_dir=tmp_path, mode="mcp")
+        server_config = MCPServerConfig(source_uri=str(tmp_path), mode="mcp")
         server = PareidoliaMCPServer(server_config)
         server.run()
 
@@ -160,28 +159,28 @@ class TestCreateServer:
         with patch("pareidolia.mcp.server.Path.cwd", return_value=tmp_path):
             server = create_server()
 
-        assert server.config.config_dir == tmp_path
-        assert server.config.mode == "cli"
+        assert server.config.source_uri == str(tmp_path)
+        assert server.config.mode == "mcp"
 
     def test_create_server_with_custom_config_dir(self, tmp_path: Path) -> None:
-        """Test creating server with custom config directory."""
+        """Test creating server with custom source directory."""
         # Create necessary directories
         (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
         (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
         (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
-        server = create_server(config_dir=tmp_path, mode="cli")
+        server = create_server(source_uri=str(tmp_path))
 
-        assert server.config.config_dir == tmp_path
-        assert server.config.mode == "cli"
+        assert server.config.source_uri == str(tmp_path)
+        assert server.config.mode == "mcp"
 
     def test_create_server_with_mcp_mode(self, tmp_path: Path) -> None:
-        """Test creating server in MCP mode."""
+        """Test creating server always uses MCP mode."""
         # Create necessary directories
         (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
         (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
         (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
-        server = create_server(config_dir=tmp_path, mode="mcp")
+        server = create_server(source_uri=str(tmp_path))
 
         assert server.config.mode == "mcp"

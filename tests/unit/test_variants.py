@@ -22,9 +22,14 @@ from pareidolia.templates.loader import TemplateLoader
 
 
 @pytest.fixture
-def mock_loader() -> Mock:
-    """Create a mock template loader."""
+def mock_loader(tmp_path: Path) -> Mock:
+    """Create a mock template loader with a real LocalFileSystem."""
+    from pareidolia.utils.filesystem import LocalFileSystem
+
     loader = Mock(spec=TemplateLoader)
+    # Use a real LocalFileSystem for proper isinstance checks
+    loader.filesystem = LocalFileSystem(tmp_path)
+    loader.root = ""  # No sub-root
     return loader
 
 

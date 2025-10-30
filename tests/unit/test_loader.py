@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from conftest import create_template_loader
 from pareidolia.core.exceptions import VariantTemplateNotFoundError
 from pareidolia.templates.loader import TemplateLoader
 
@@ -25,7 +26,7 @@ class TestTemplateLoaderVariants:
             if file.is_file():
                 shutil.copy(file, variant_dir)
 
-        return TemplateLoader(tmp_path)
+        return create_template_loader(tmp_path)
 
     def test_load_variant_template_with_j2_extension(
         self, loader: TemplateLoader
@@ -78,7 +79,7 @@ class TestTemplateLoaderVariants:
 
     def test_list_variants_empty_directory(self, tmp_path: Path) -> None:
         """Test listing variants in empty directory."""
-        loader = TemplateLoader(tmp_path)
+        loader = create_template_loader(tmp_path)
         variants = loader.list_variants()
         assert variants == []
 
@@ -91,7 +92,7 @@ class TestTemplateLoaderVariants:
         (variant_dir / "test.md").write_text("plain markdown")
         (variant_dir / "test.md.jinja2").write_text("jinja2 template")
 
-        loader = TemplateLoader(tmp_path)
+        loader = create_template_loader(tmp_path)
         content = loader.load_variant_template("test")
 
         # Should load .md.jinja2 first (checked before .md)

@@ -6,6 +6,9 @@ from pathlib import Path
 
 import pytest
 
+from pareidolia.templates.loader import TemplateLoader
+from pareidolia.utils.filesystem import LocalFileSystem
+
 # Test directory - gitignored and auto-cleaned
 TEST_TMP_DIR = Path(__file__).parent.parent / ".test-tmp"
 
@@ -114,3 +117,17 @@ def sample_project(temp_dir: Path) -> Path:
     )
 
     return project_root
+
+
+def create_template_loader(root: Path, template_root: str = "") -> TemplateLoader:
+    """Helper function to create TemplateLoader with LocalFileSystem.
+
+    Args:
+        root: Base path for the filesystem
+        template_root: Root path within filesystem (e.g., "pareidolia" or "")
+
+    Returns:
+        Configured TemplateLoader instance
+    """
+    filesystem = LocalFileSystem(root)
+    return TemplateLoader(filesystem, template_root)

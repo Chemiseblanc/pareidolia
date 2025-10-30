@@ -42,14 +42,26 @@ class Generator:
         generator: Prompt generator
     """
 
-    def __init__(self, config: PareidoliaConfig) -> None:
+    def __init__(
+        self,
+        config: PareidoliaConfig,
+        loader: TemplateLoader | None = None,
+    ) -> None:
         """Initialize the generator.
 
         Args:
             config: Pareidolia configuration
+            loader: Optional TemplateLoader (creates default if None)
         """
         self.config = config
-        self.loader = TemplateLoader(config.root)
+
+        # Use provided loader or create default LocalFileSystem loader
+        if loader is None:
+            from pareidolia.utils.filesystem import LocalFileSystem
+            filesystem = LocalFileSystem(config.root)
+            loader = TemplateLoader(filesystem, "")
+
+        self.loader = loader
         self.composer = PromptComposer(
             self.loader, Jinja2Engine(), config.generate
         )

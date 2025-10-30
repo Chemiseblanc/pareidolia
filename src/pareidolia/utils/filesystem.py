@@ -7,8 +7,6 @@ from pathlib import Path
 from typing import Protocol
 from urllib.parse import urlparse
 
-from pareidolia.utils.github import create_github_filesystem
-
 GITHUB_REQUEST_TIMEOUT = 5  # Timeout for GitHub API requests in seconds
 
 
@@ -357,6 +355,8 @@ def parse_source_uri(source_uri: str) -> FileSystem:
 
     # github:// URL - delegate to GitHub filesystem factory
     if scheme == "github":
+        # Import here to avoid circular dependency
+        from pareidolia.utils.github import create_github_filesystem
         return create_github_filesystem(source_uri)
 
     # Unsupported scheme

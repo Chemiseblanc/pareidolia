@@ -102,7 +102,7 @@ class VariantGenerator:
         strategy: Literal["cli", "mcp"] = "cli",
         ctx: Any | None = None,
         metadata: dict[str, Any] | None = None,
-    ) -> Path:
+    ) -> Path | None:
         """Generate a single variant action template using AI transformation.
 
         This method generates a variant action template (Jinja2 .md.j2 file) instead
@@ -118,7 +118,8 @@ class VariantGenerator:
             metadata: Optional metadata dict to include in variant instruction rendering
 
         Returns:
-            Path to the created variant action template file
+            Path to the created variant action template file, or None if filesystem
+            is read-only
 
         Raises:
             ActionNotFoundError: If base action template not found
@@ -247,14 +248,36 @@ class VariantGenerator:
                 f"after {MAX_TEMPLATE_GENERATION_RETRIES} attempts"
             )
 
+        # Check if filesystem is read-only
+        if self.loader.filesystem.is_readonly():
+            logger.warning(
+                f"Skipping variant template write (read-only filesystem): "
+                f"{variant_name}-{action_name}.md.j2"
+            )
+            # Return None to indicate template not written to disk
+            # (it will be cached in memory by the generator)
+            return None
+
         # Write template to actions/{variant}-{action}.md.j2
-        actions_dir = self.loader.root / "actions"
-        actions_dir.mkdir(parents=True, exist_ok=True)
+        # Build path using loader's filesystem path construction
+        from pareidolia.utils.filesystem import LocalFileSystem
 
-        template_filename = f"{variant_name}-{action_name}.md.j2"
-        template_path = actions_dir / template_filename
+        # For local filesystems, we can write to disk
+        if isinstance(self.loader.filesystem, LocalFileSystem):
+            actions_dir = self.loader.filesystem.base_path
+            if self.loader.root:
+                actions_dir = actions_dir / self.loader.root
+            actions_dir = actions_dir / "actions"
+            actions_dir.mkdir(parents=True, exist_ok=True)
 
-        template_path.write_text(generated_template)
-        logger.info(f"Created variant template: {template_path}")
+            template_filename = f"{variant_name}-{action_name}.md.j2"
+            template_path = actions_dir / template_filename
 
-        return template_path
+            template_path.write_text(generated_template)
+            logger.info(f"Created variant template: {template_path}")
+
+            return template_path
+        else:
+            # Non-local filesystem, shouldn't reach here due to is_readonly check
+            logger.warning("Cannot write variant template to non-local filesystem")
+            return None
