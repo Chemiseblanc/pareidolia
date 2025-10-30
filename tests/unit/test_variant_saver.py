@@ -29,10 +29,10 @@ class TestVariantSaver:
         pareidolia_dir = project_root / "pareidolia"
         pareidolia_dir.mkdir()
 
-        persona_dir = pareidolia_dir / "persona"
+        persona_dir = pareidolia_dir / "personas"
         persona_dir.mkdir()
 
-        action_dir = pareidolia_dir / "action"
+        action_dir = pareidolia_dir / "actions"
         action_dir.mkdir()
 
         # Create a test persona
@@ -79,7 +79,7 @@ class TestVariantSaver:
         expected_path = (
             temp_project
             / "pareidolia"
-            / "action"
+            / "actions"
             / "refine-analyze.md.j2"
         )
         actual_path = variant_saver._get_template_path("refine", "analyze")
@@ -93,7 +93,7 @@ class TestVariantSaver:
         expected_path = (
             temp_project
             / "pareidolia"
-            / "action"
+            / "actions"
             / "update-research.md.j2"
         )
         actual_path = variant_saver._get_template_path("update", "research")
@@ -204,7 +204,7 @@ class TestVariantSaver:
         assert was_saved is True
         assert error_msg is None
         assert file_path.exists()
-        expected = temp_project / "pareidolia" / "action" / "refine-analyze.md.j2"
+        expected = temp_project / "pareidolia" / "actions" / "refine-analyze.md.j2"
         assert file_path == expected
 
         # Verify content
@@ -220,7 +220,7 @@ class TestVariantSaver:
     ) -> None:
         """Test save_variant skips when file exists and force=False."""
         # Create the file first
-        action_dir = temp_project / "pareidolia" / "action"
+        action_dir = temp_project / "pareidolia" / "actions"
         action_dir.mkdir(parents=True, exist_ok=True)
         existing_file = action_dir / "refine-analyze.md.j2"
         existing_file.write_text("Existing content")
@@ -244,7 +244,7 @@ class TestVariantSaver:
     ) -> None:
         """Test save_variant overwrites when file exists and force=True."""
         # Create the file first
-        action_dir = temp_project / "pareidolia" / "action"
+        action_dir = temp_project / "pareidolia" / "actions"
         action_dir.mkdir(parents=True, exist_ok=True)
         existing_file = action_dir / "refine-analyze.md.j2"
         existing_file.write_text("Existing content")
@@ -267,7 +267,7 @@ class TestVariantSaver:
     ) -> None:
         """Test save_variant creates directories if they don't exist."""
         # Remove action directory
-        action_dir = temp_project / "pareidolia" / "action"
+        action_dir = temp_project / "pareidolia" / "actions"
         if action_dir.exists():
             import shutil
             shutil.rmtree(action_dir)
@@ -366,7 +366,7 @@ class TestVariantSaver:
     ) -> None:
         """Test save_all reports individual results correctly."""
         # Create one existing file
-        action_dir = temp_project / "pareidolia" / "action"
+        action_dir = temp_project / "pareidolia" / "actions"
         action_dir.mkdir(parents=True, exist_ok=True)
         existing_file = action_dir / "refine-analyze.md.j2"
         existing_file.write_text("Existing content")
@@ -421,7 +421,7 @@ class TestVariantSaver:
     ) -> None:
         """Test save_all with force=True overwrites existing files."""
         # Create existing files
-        action_dir = temp_project / "pareidolia" / "action"
+        action_dir = temp_project / "pareidolia" / "actions"
         action_dir.mkdir(parents=True, exist_ok=True)
         existing_file1 = action_dir / "refine-analyze.md.j2"
         existing_file1.write_text("Old content 1")

@@ -55,12 +55,12 @@ class TestGenerateIntegration:
         project_dir.mkdir()
 
         # Create persona
-        persona_dir = project_dir / "pareidolia" / "persona"
+        persona_dir = project_dir / "pareidolia" / "personas"
         persona_dir.mkdir(parents=True)
         (persona_dir / "researcher.md").write_text("Expert researcher")
 
         # Create action template that uses metadata
-        action_dir = project_dir / "pareidolia" / "action"
+        action_dir = project_dir / "pareidolia" / "actions"
         action_dir.mkdir(parents=True)
         action_template = """---
 {% if metadata.description %}description: {{ metadata.description }}{% endif %}
@@ -119,12 +119,12 @@ temperature = 0.7
         project_dir.mkdir()
 
         # Create persona
-        persona_dir = project_dir / "pareidolia" / "persona"
+        persona_dir = project_dir / "pareidolia" / "personas"
         persona_dir.mkdir(parents=True)
         (persona_dir / "tester.md").write_text("Test persona")
 
         # Create action template with nested metadata access
-        action_dir = project_dir / "pareidolia" / "action"
+        action_dir = project_dir / "pareidolia" / "actions"
         action_dir.mkdir(parents=True)
         action_template = """{{ persona }}
 

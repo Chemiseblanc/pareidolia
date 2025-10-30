@@ -31,8 +31,8 @@ class TestFrontmatterGeneration:
         """Test that frontmatter is generated when metadata is present."""
         # Create test structure
         root = tmp_path / "pareidolia"
-        personas_dir = root / "persona"
-        actions_dir = root / "action"
+        personas_dir = root / "personas"
+        actions_dir = root / "actions"
         personas_dir.mkdir(parents=True)
         actions_dir.mkdir(parents=True)
 
@@ -92,8 +92,8 @@ Perform analysis.
         """Test that no frontmatter is generated when metadata is absent."""
         # Create test structure
         root = tmp_path / "pareidolia"
-        personas_dir = root / "persona"
-        actions_dir = root / "action"
+        personas_dir = root / "personas"
+        actions_dir = root / "actions"
         personas_dir.mkdir(parents=True)
         actions_dir.mkdir(parents=True)
 
@@ -143,8 +143,8 @@ Perform analysis.
         """Test that tool and library information is available in frontmatter."""
         # Create test structure
         root = tmp_path / "pareidolia"
-        personas_dir = root / "persona"
-        actions_dir = root / "action"
+        personas_dir = root / "personas"
+        actions_dir = root / "actions"
         personas_dir.mkdir(parents=True)
         actions_dir.mkdir(parents=True)
 
@@ -200,8 +200,8 @@ description: {{ metadata.description }}
         """Test frontmatter generation with nested metadata structures."""
         # Create test structure
         root = tmp_path / "pareidolia"
-        personas_dir = root / "persona"
-        actions_dir = root / "action"
+        personas_dir = root / "personas"
+        actions_dir = root / "actions"
         personas_dir.mkdir(parents=True)
         actions_dir.mkdir(parents=True)
 
@@ -262,8 +262,8 @@ config:
         """Test frontmatter generation with array metadata (tags)."""
         # Create test structure
         root = tmp_path / "pareidolia"
-        personas_dir = root / "persona"
-        actions_dir = root / "action"
+        personas_dir = root / "personas"
+        actions_dir = root / "actions"
         personas_dir.mkdir(parents=True)
         actions_dir.mkdir(parents=True)
 
@@ -311,8 +311,8 @@ tags: {{ metadata.tags | tojson }}
         """Test GitHub Copilot-style frontmatter generation."""
         # Create test structure
         root = tmp_path / "pareidolia"
-        personas_dir = root / "persona"
-        actions_dir = root / "action"
+        personas_dir = root / "personas"
+        actions_dir = root / "actions"
         personas_dir.mkdir(parents=True)
         actions_dir.mkdir(parents=True)
 
@@ -369,8 +369,8 @@ Review the following code.
         """Test Claude Code-style frontmatter generation."""
         # Create test structure
         root = tmp_path / "pareidolia"
-        personas_dir = root / "persona"
-        actions_dir = root / "action"
+        personas_dir = root / "personas"
+        actions_dir = root / "actions"
         personas_dir.mkdir(parents=True)
         actions_dir.mkdir(parents=True)
 
@@ -437,8 +437,8 @@ temperature: {{ metadata.temperature }}
         """Test backward compatibility when no metadata is configured."""
         # Create test structure
         root = tmp_path / "pareidolia"
-        personas_dir = root / "persona"
-        actions_dir = root / "action"
+        personas_dir = root / "personas"
+        actions_dir = root / "actions"
         personas_dir.mkdir(parents=True)
         actions_dir.mkdir(parents=True)
 

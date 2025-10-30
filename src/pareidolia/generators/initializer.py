@@ -206,7 +206,7 @@ Your action content here...
 """
 
     def create_config_file(self, path: Path, overwrite: bool = False) -> None:
-        """Create a .pareidolia.toml configuration file.
+        """Create a pareidolia.toml configuration file.
 
         Args:
             path: Path where the configuration file should be created
@@ -218,7 +218,7 @@ Your action content here...
             IOError: If file cannot be written due to permissions or other
                     filesystem errors
         """
-        config_path = path / ".pareidolia.toml"
+        config_path = path / "pareidolia.toml"
 
         if config_path.exists() and not overwrite:
             raise ConfigurationError(

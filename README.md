@@ -92,7 +92,7 @@ Create a `pareidolia.toml` file (automatically created by `init`):
 
 ```toml
 [pareidolia]
-root = "pareidolia"  # Directory containing persona/action/example folders
+root = "pareidolia"  # Directory containing personas/actions/examples folders
 
 [generate]
 tool = "copilot"             # or "claude-code", etc.
@@ -208,10 +208,15 @@ pareidolia/
 
 **Template Format:**
 
-Variant templates are Jinja2 templates that receive three variables:
+Variant templates are Jinja2 templates with the following valid extensions: `.md.jinja2`, `.md.jinja`, `.md.j2`, or `.md`.
+
+They receive these variables:
 - `{{ persona_name }}` - The persona name (e.g., "researcher")
 - `{{ action_name }}` - The action name (e.g., "research")
 - `{{ variant_name }}` - The variant being generated (e.g., "update")
+- `{{ tool }}` - The target tool name (e.g., "copilot", "claude-code")
+- `{{ library }}` - The library name if configured (e.g., "promptlib")
+- `{{ metadata }}` - The merged metadata dictionary (global + per-prompt)
 
 **Example variant template (`variant/update.md.j2`):**
 
@@ -456,10 +461,13 @@ pareidolia generate
 
 ### Template Format
 
-Variant templates are Jinja2 templates with three variables:
+Variant templates are Jinja2 templates that receive these variables:
 - `{{ persona_name }}` - The persona name
 - `{{ action_name }}` - The action name
 - `{{ variant_name }}` - The variant being generated
+- `{{ tool }}` - The target tool name (if configured)
+- `{{ library }}` - The library name (if configured)
+- `{{ metadata }}` - The metadata dictionary (if configured)
 
 Example template structure:
 ```markdown
@@ -508,140 +516,54 @@ variants = ["update", "refine"]
 cli_tool = "claude"
 ```
 
-## Saving AI-Generated Variants
+## AI-Generated Variant Caching
 
-When variants are generated using AI transformation (rather than from existing action templates), they are cached in memory during the CLI session. You can persist these AI-generated variants as action templates for future reuse using the `save` command.
+When variants are generated using AI transformation (rather than from existing action templates), they are automatically cached in memory during generation. This caching mechanism is used internally by the MCP server to optimize performance.
 
-### Why Save Variants?
+### How Variant Generation Works
 
-Saving AI-generated variants provides several benefits:
+1. **Template-First Approach**: When generating a variant (e.g., `update-research`), Pareidolia first looks for an action template at `pareidolia/actions/{variant}-{action}.md.j2`
+2. **AI Fallback**: If no template exists, Pareidolia uses an AI CLI tool to transform the base prompt according to your variant template
+3. **Automatic Caching**: AI-generated variants are cached in memory for potential reuse during the session
+4. **MCP Integration**: The MCP server leverages the cache to avoid regenerating the same variant multiple times
 
-- **Speed**: Future generations use templates instead of AI, making them much faster
-- **Determinism**: Template-based generation produces consistent output every time
-- **Cost**: Avoid repeated AI API calls for the same transformations
-- **Customization**: Edit saved templates to fine-tune variants to your exact needs
-- **Offline**: Once saved, variants work without an AI CLI tool
+### Creating Permanent Variant Templates
 
-### Usage
+To avoid AI generation overhead, you can manually create variant action templates:
 
-#### Basic Save
+1. **Generate a variant** using AI transformation:
+   ```bash
+   pareidolia generate
+   ```
 
-After generating prompts with AI variants, save them to templates:
+2. **Review the output** in your output directory:
+   ```bash
+   cat prompts/update-research.prompt.md
+   ```
 
-```bash
-# Generate prompts (including AI variants)
-pareidolia generate
+3. **Manually create an action template** if you want to make it permanent:
+   - Copy the variant output to `pareidolia/actions/update-research.md.j2`
+   - Replace the persona content with `{{ persona }}` placeholder
+   - Add any other template variables as needed
 
-# Output:
-# Successfully generated 4 prompt(s):
-#   - prompts/research.prompt.md
-#   - prompts/update-research.prompt.md
-#   - prompts/refine-research.prompt.md
-#   - prompts/summarize-research.prompt.md
-#
-# 3 variant(s) cached. Use 'pareidolia save' to persist them as templates.
+4. **Future generations** will use the template instead of AI:
+   ```bash
+   pareidolia generate  # Fast, uses template!
+   ```
 
-# Save all cached variants as action templates
-pareidolia save
+### Benefits of Action Templates
 
-# Output:
-# Successfully saved 3 template(s):
-#   ✓ pareidolia/action/update-research.md.j2
-#   ✓ pareidolia/action/refine-research.md.j2
-#   ✓ pareidolia/action/summarize-research.md.j2
-```
-
-#### List Cached Variants
-
-View what variants are in the cache without saving:
-
-```bash
-pareidolia save --list
-
-# Output:
-# Cached Variants:
-#   Variant    Action      Persona     Generated
-#   ---------  ----------  ----------  -------------------
-#   update     research    researcher  2024-10-29 10:30:00
-#   refine     research    researcher  2024-10-29 10:30:01
-#   summarize  research    researcher  2024-10-29 10:30:02
-```
-
-#### Filter by Variant
-
-Save only specific variant type(s):
-
-```bash
-# Save only "update" variants
-pareidolia save --variant update
-
-# Save multiple specific variants
-pareidolia save --variant update refine
-```
-
-#### Filter by Action
-
-Save only variants for a specific action:
-
-```bash
-# Save only variants for "research" action
-pareidolia save --action research
-```
-
-#### Combined Filters
-
-Combine filters to save specific variants for specific actions:
-
-```bash
-# Save only "update" variants for "research" action
-pareidolia save --variant update --action research
-```
-
-#### Force Overwrite
-
-By default, `save` will skip existing template files. Use `--force` to overwrite:
-
-```bash
-# Overwrite existing templates
-pareidolia save --force
-
-# Output:
-# Successfully saved 3 template(s):
-#   ✓ pareidolia/action/update-research.md.j2 (overwritten)
-#   ✓ pareidolia/action/refine-research.md.j2 (overwritten)
-#   ✓ pareidolia/action/summarize-research.md.j2 (overwritten)
-```
-
-### How It Works
-
-1. **During Generation**: When variants are generated via AI (not from existing templates), they are automatically cached in memory
-2. **Caching**: The cache stores the variant name, action name, persona name, content, and metadata
-3. **Saving**: The `save` command converts cached variants to Jinja2 templates by replacing persona content with `{{ persona }}` placeholders
-4. **Template Location**: Saved templates are written to `pareidolia/action/{variant}-{action}.md.j2`
-5. **Future Generations**: Once saved, the template is used instead of AI for that variant
-
-### Example Workflow
-
-```bash
-# 1. Generate prompts with AI variants
-pareidolia generate
-
-# 2. Review the generated variants in your output directory
-cat prompts/update-research.prompt.md
-
-# 3. If satisfied, save the variant as a template
-pareidolia save --variant update
-
-# 4. Future generations will use the saved template (fast and deterministic)
-pareidolia generate  # No AI call for "update" variant!
-```
+- **Speed**: Template-based generation is instant (no AI API calls)
+- **Determinism**: Templates produce consistent output every time
+- **Cost**: Avoid repeated AI API calls
+- **Customization**: Edit templates to fine-tune variants exactly how you want
+- **Offline**: Works without an AI CLI tool
 
 ### Notes
 
-- Only AI-generated variants are cached (variants from existing templates are not cached since they're already saved)
-- The cache is in-memory only and cleared when the CLI exits
-- Saved templates can be edited like any other action template
-- Once saved, variants become part of your project's source templates
+- The in-memory cache is cleared when the CLI exits
+- The MCP server maintains its own cache for prompts generated via MCP
+- Creating action templates is the recommended way to make variants permanent
 
 ## MCP Server
 
@@ -657,23 +579,25 @@ uv sync
 
 ### Usage
 
-The MCP server can run in two modes:
+The MCP server runs in stdio transport mode for integration with AI tools:
 
-**CLI Mode** (for testing and debugging):
-```bash
-pareidolia --mcp --config-dir ./my-project
-```
-
-**MCP Mode** (for integration with AI tools):
 ```bash
 pareidolia --mcp --config-dir ./my-project
 ```
 
 If no `--config-dir` is specified, the current directory is used.
 
-### Available MCP Tools
+### MCP Resources
 
-The server exposes the following tools through the MCP protocol:
+The server exposes two types of MCP resources:
+
+#### 1. MCP Tools (Dynamic Generation)
+
+These tools allow on-demand prompt generation with custom parameters:
+
+#### 1. MCP Tools (Dynamic Generation)
+
+These tools allow on-demand prompt generation with custom parameters:
 
 1. **list_personas**: List all available personas
    - Returns persona names and content previews
@@ -715,13 +639,37 @@ The server exposes the following tools through the MCP protocol:
    - Alias for `generate_prompt` with semantic emphasis on composition
    - Same arguments and return value as `generate_prompt`
 
+#### 2. MCP Prompts (Pre-configured Templates)
+
+The server also registers MCP prompts for each configured action and variant in your `pareidolia.toml`:
+
+- **Base Prompts**: Each `[[prompt]]` entry creates a prompt resource
+- **Variant Prompts**: Each variant in a prompt's `variants` list creates a separate prompt resource
+- **AI-Enhanced**: Variant prompts use FastMCP's sampling feature for AI-powered generation
+- **Cached**: Variant prompts are cached to avoid regeneration during the session
+
+For example, with this configuration:
+
+```toml
+[[prompt]]
+persona = "researcher"
+action = "research"
+variants = ["update", "refine", "summarize"]
+```
+
+The MCP server will register:
+- `research` - Base prompt
+- `update_research` - Update variant prompt (uses AI sampling)
+- `refine_research` - Refine variant prompt (uses AI sampling)
+- `summarize_research` - Summarize variant prompt (uses AI sampling)
+
 ### Configuration
 
-The MCP server uses the same `.pareidolia.toml` configuration file as the main CLI tool. No additional configuration is required.
+The MCP server uses the same `pareidolia.toml` configuration file as the main CLI tool. Prompts are automatically registered based on your `[[prompt]]` entries.
 
 ### Example: Using with AI Tools
 
-Configure your AI tool to use the MCP server:
+Configure your AI tool (e.g., Claude Desktop, Cline) to use the MCP server:
 
 ```json
 {
@@ -734,13 +682,15 @@ Configure your AI tool to use the MCP server:
 }
 ```
 
-Then use MCP tools within your AI assistant:
+#### Using MCP Tools
+
+Use MCP tools within your AI assistant for dynamic generation:
 
 ```
 # List available personas
 use_mcp_tool("pareidolia", "list_personas")
 
-# Generate a prompt
+# Generate a prompt dynamically
 use_mcp_tool("pareidolia", "generate_prompt", {
   "action": "research",
   "persona": "researcher",
@@ -750,7 +700,7 @@ use_mcp_tool("pareidolia", "generate_prompt", {
   }
 })
 
-# Generate variants
+# Generate variants dynamically
 use_mcp_tool("pareidolia", "generate_variants", {
   "action": "research",
   "persona": "researcher",
@@ -758,9 +708,26 @@ use_mcp_tool("pareidolia", "generate_variants", {
 })
 ```
 
+#### Using MCP Prompts
+
+Access pre-configured prompts directly (based on your `pareidolia.toml`):
+
+```
+# Use a base prompt
+use_mcp_prompt("pareidolia", "research")
+
+# Use a variant prompt (AI-enhanced)
+use_mcp_prompt("pareidolia", "update_research")
+```
+
 ### Sampler Support
 
-The `generate_with_sampler` tool supports FastMCP's sampler feature, allowing AI-enhanced prompt generation. When a sampler context is provided by the MCP client, it can be used for advanced generation scenarios.
+The MCP server uses FastMCP's sampler feature for AI-enhanced prompt generation:
+
+- **Base Prompts**: Use standard template rendering (fast, deterministic)
+- **Variant Prompts**: Use AI sampling to transform base prompts according to variant templates
+- **Caching**: Variant prompts are cached during the session to avoid regeneration
+- **Dynamic**: Tools like `generate_with_sampler` support additional AI enhancement
 
 This feature is particularly useful for:
 - Dynamic prompt adaptation based on context

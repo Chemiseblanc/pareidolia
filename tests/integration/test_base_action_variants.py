@@ -19,14 +19,14 @@ def clear_cache():
 def temp_project_dir(tmp_path):
     """Create a temporary project directory with minimal structure."""
     # Create persona
-    persona_dir = tmp_path / "persona"
+    persona_dir = tmp_path / "personas"
     persona_dir.mkdir()
     (persona_dir / "researcher.md").write_text(
         "You are an expert researcher with deep analytical skills."
     )
 
     # Create base action
-    action_dir = tmp_path / "action"
+    action_dir = tmp_path / "actions"
     action_dir.mkdir()
     (action_dir / "research.md.j2").write_text(
         "Research the following topic:\n{{ persona }}\n\nProvide detailed findings."
@@ -56,7 +56,7 @@ def temp_output_dir(tmp_path):
 def test_variant_generated_from_action_template(temp_project_dir, temp_output_dir):
     """Test that variant is generated from action template when it exists."""
     # Create action template for variant (update-research.md.j2)
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     variant_action_path = action_dir / "update-research.md.j2"
     variant_action_path.write_text(
         "{{ persona }}\n\n"
@@ -176,7 +176,7 @@ def test_variant_falls_back_to_ai_when_no_action_template(
 def test_mixed_direct_and_ai_variants(temp_project_dir, temp_output_dir):
     """Test mixed scenario with some direct templates and some AI fallback."""
     # Create action template for update (direct)
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "update-research.md.j2").write_text(
         "{{ persona }}\n\nUpdate variant from direct template."
     )
@@ -245,7 +245,7 @@ def test_mixed_direct_and_ai_variants(temp_project_dir, temp_output_dir):
 def test_all_variants_from_action_templates(temp_project_dir, temp_output_dir):
     """Test that all variants can be generated from action templates (no AI needed)."""
     # Create action templates for all variants
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "update-research.md.j2").write_text(
         "{{ persona }}\n\nUpdate from template."
     )
@@ -299,7 +299,7 @@ def test_all_variants_from_action_templates(temp_project_dir, temp_output_dir):
 def test_direct_variant_with_library_prefix(temp_project_dir, temp_output_dir):
     """Test that direct variant action templates work with library prefix."""
     # Create action template for variant
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "update-research.md.j2").write_text(
         "{{ persona }}\n\nUpdate variant with library."
     )
@@ -349,7 +349,7 @@ def test_direct_variant_with_library_prefix(temp_project_dir, temp_output_dir):
 def test_generate_all_with_mixed_variants(temp_project_dir, temp_output_dir):
     """Test generate_all with mixed direct and AI variant generation."""
     # Create action templates
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "analyze.md.j2").write_text("{{ persona }}\n\nAnalyze this.")
     (action_dir / "update-research.md.j2").write_text(
         "{{ persona }}\n\nUpdate variant."
@@ -419,7 +419,7 @@ def test_generate_all_with_mixed_variants(temp_project_dir, temp_output_dir):
 def test_direct_variant_with_examples(temp_project_dir, temp_output_dir):
     """Test that direct variant templates receive example names."""
     # Create action template for variant with examples
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "update-research.md.j2").write_text(
         "{{ persona }}\\n\\nUpdate variant.\\n\\n"
         "{% if examples %}Examples:\\n"
@@ -428,7 +428,7 @@ def test_direct_variant_with_examples(temp_project_dir, temp_output_dir):
     )
 
     # Create example files
-    example_dir = temp_project_dir / "example"
+    example_dir = temp_project_dir / "examples"
     example_dir.mkdir()
     (example_dir / "sample1.md").write_text("Example 1 content")
     (example_dir / "sample2.md").write_text("Example 2 content")
@@ -475,7 +475,7 @@ def test_direct_variant_with_examples(temp_project_dir, temp_output_dir):
 def test_ai_fallback_continues_on_cli_tool_error(temp_project_dir, temp_output_dir):
     """Test that generation continues when AI fallback fails."""
     # Create one direct template and one that will use AI (and fail)
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "update-research.md.j2").write_text(
         "{{ persona }}\n\nUpdate variant."
     )
@@ -538,7 +538,7 @@ def test_logging_indicates_generation_strategy(
     caplog.set_level(logging.INFO)
 
     # Create one direct template
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "update-research.md.j2").write_text(
         "{{ persona }}\n\nUpdate variant."
     )
@@ -656,7 +656,7 @@ def test_ai_variant_is_cached(temp_project_dir, temp_output_dir):
 def test_template_variant_not_cached(temp_project_dir, temp_output_dir):
     """Test that template-based variants are NOT cached."""
     # Create action template for variant (direct generation)
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "update-research.md.j2").write_text(
         "{{ persona }}\n\nUpdate variant from template."
     )

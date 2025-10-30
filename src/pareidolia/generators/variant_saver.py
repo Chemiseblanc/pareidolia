@@ -121,5 +121,5 @@ class VariantSaver:
         Returns:
             Path to the template file
         """
-        action_dir = self.project_root / "pareidolia" / "action"
+        action_dir = self.project_root / "pareidolia" / "actions"
         return action_dir / f"{variant_name}-{action_name}.md.j2"

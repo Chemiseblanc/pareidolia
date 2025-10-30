@@ -13,9 +13,9 @@ def temp_project(tmp_path: Path) -> Path:
     """Create a temporary Pareidolia project with example files."""
     # Create directory structure
     pareidolia_root = tmp_path / "pareidolia"
-    persona_dir = pareidolia_root / "persona"
-    action_dir = pareidolia_root / "action"
-    example_dir = pareidolia_root / "example"
+    persona_dir = pareidolia_root / "personas"
+    action_dir = pareidolia_root / "actions"
+    example_dir = pareidolia_root / "examples"
 
     persona_dir.mkdir(parents=True)
     action_dir.mkdir(parents=True)
@@ -54,8 +54,8 @@ Task: Analyze the provided data systematically.
 """
     )
 
-    # Create config file
-    config_file = tmp_path / ".pareidolia.toml"
+    # Create config file with prompt configurations
+    config_file = tmp_path / "pareidolia.toml"
     config_file.write_text(
         """
 [pareidolia]
@@ -64,6 +64,22 @@ root = "pareidolia"
 [generate]
 tool = "copilot"
 output_dir = "prompts"
+
+[[prompt]]
+persona = "researcher"
+action = "research"
+variants = ["update", "refine"]
+
+[prompt.metadata]
+description = "Research prompt"
+
+[[prompt]]
+persona = "researcher"
+action = "analyze"
+variants = ["expand"]
+
+[prompt.metadata]
+description = "Analysis prompt"
 """
     )
 
@@ -103,45 +119,53 @@ class TestMCPServerIntegration:
         assert "example1" in example_names
 
     @patch("pareidolia.mcp.server.FastMCP")
-    def test_server_registers_tools(
+    def test_server_registers_prompts(
         self, mock_fastmcp_class, temp_project: Path
     ) -> None:
-        """Test that server registers all MCP tools on initialization."""
+        """Test that server registers all MCP prompts on initialization."""
         from unittest.mock import Mock
 
         mock_mcp = Mock()
         mock_fastmcp_class.return_value = mock_mcp
 
-        # Track tool registrations
-        registered_tools = []
+        # Track prompt registrations
+        registered_prompts = []
 
-        def tool_decorator():
+        def prompt_decorator():
             def decorator(func):
-                registered_tools.append(func.__name__)
+                registered_prompts.append(func.__name__)
                 return func
 
             return decorator
 
-        mock_mcp.tool = tool_decorator
+        mock_mcp.prompt = prompt_decorator
 
         create_server(config_dir=temp_project, mode="cli")
 
-        # Verify all expected tools were registered
-        assert "list_personas" in registered_tools
-        assert "list_actions" in registered_tools
-        assert "list_examples" in registered_tools
-        assert "generate_prompt" in registered_tools
-        assert "generate_with_sampler" in registered_tools
-        assert "generate_variants" in registered_tools
-        assert "compose_prompt" in registered_tools
+        # Verify expected prompts were registered based on config
+        # Config has 2 [[prompt]] blocks:
+        # 1. research with variants: update, refine
+        #    -> 3 prompts (research, update_research, refine_research)
+        # 2. analyze with variants: expand
+        #    -> 2 prompts (analyze, expand_analyze)
+        # Total: 5 prompts
+
+        assert "research" in registered_prompts
+        assert "update_research" in registered_prompts
+        assert "refine_research" in registered_prompts
+        assert "analyze" in registered_prompts
+        assert "expand_analyze" in registered_prompts
+
+        # Should have exactly 5 prompts
+        assert len(registered_prompts) == 5
 
     def test_server_with_missing_config_uses_defaults(self, tmp_path: Path) -> None:
         """Test server uses defaults when config file is missing."""
         # Create minimal structure without config file
         pareidolia_root = tmp_path / "pareidolia"
-        (pareidolia_root / "persona").mkdir(parents=True)
-        (pareidolia_root / "action").mkdir(parents=True)
-        (pareidolia_root / "example").mkdir(parents=True)
+        (pareidolia_root / "personas").mkdir(parents=True)
+        (pareidolia_root / "actions").mkdir(parents=True)
+        (pareidolia_root / "examples").mkdir(parents=True)
 
         server = create_server(config_dir=tmp_path, mode="cli")
 
@@ -158,39 +182,90 @@ class TestMCPServerIntegration:
         mcp_server = create_server(config_dir=temp_project, mode="mcp")
         assert mcp_server.config.mode == "mcp"
 
+    @patch("pareidolia.mcp.server.FastMCP")
+    def test_server_with_no_prompts_configured(
+        self, mock_fastmcp_class, tmp_path: Path
+    ) -> None:
+        """Test server handles missing [[prompt]] configs gracefully."""
+        from unittest.mock import Mock
 
-class TestMCPToolsIntegration:
-    """Integration tests for MCP tools with real project data."""
+        # Create minimal structure without prompt configs
+        pareidolia_root = tmp_path / "pareidolia"
+        (pareidolia_root / "personas").mkdir(parents=True)
+        (pareidolia_root / "actions").mkdir(parents=True)
 
-    def test_list_personas_with_real_data(self, temp_project: Path) -> None:
-        """Test list_personas tool with real project data."""
+        # Create config without any [[prompt]] blocks
+        config_file = tmp_path / "pareidolia.toml"
+        config_file.write_text(
+            """
+[pareidolia]
+root = "pareidolia"
+
+[generate]
+tool = "copilot"
+output_dir = "prompts"
+"""
+        )
+
+        mock_mcp = Mock()
+        mock_fastmcp_class.return_value = mock_mcp
+
+        # Track prompt registrations
+        registered_prompts = []
+
+        def prompt_decorator():
+            def decorator(func):
+                registered_prompts.append(func.__name__)
+                return func
+
+            return decorator
+
+        mock_mcp.prompt = prompt_decorator
+
+        # Server should initialize without error
+        server = create_server(config_dir=tmp_path, mode="cli")
+
+        # No prompts should be registered
+        assert len(registered_prompts) == 0
+        assert server is not None
+
+
+class TestMCPPromptsIntegration:
+    """Integration tests for MCP prompts with real project data."""
+
+    def test_prompt_discovery_with_real_config(self, temp_project: Path) -> None:
+        """Test that prompts are discovered from real config file."""
         server = create_server(config_dir=temp_project, mode="cli")
 
-        # Access the loader to get persona names
-        persona_names = server.generator.loader.list_personas()
+        # Verify config has prompts
+        assert len(server.pareidolia_config.prompt) == 2
 
-        assert len(persona_names) == 1
+        # Check first prompt config
+        research_prompt = server.pareidolia_config.prompt[0]
+        assert research_prompt.persona == "researcher"
+        assert research_prompt.action == "research"
+        assert "update" in research_prompt.variants
+        assert "refine" in research_prompt.variants
+
+        # Check second prompt config
+        analyze_prompt = server.pareidolia_config.prompt[1]
+        assert analyze_prompt.persona == "researcher"
+        assert analyze_prompt.action == "analyze"
+        assert "expand" in analyze_prompt.variants
+
+    def test_base_prompt_generation_with_real_data(self, temp_project: Path) -> None:
+        """Test base prompt generation with real project data."""
+        server = create_server(config_dir=temp_project, mode="cli")
+
+        # Access the loader to verify personas and actions exist
+        persona_names = server.generator.loader.list_personas()
         assert "researcher" in persona_names
 
-        # Load the actual persona to verify content
-        persona = server.generator.loader.load_persona("researcher")
-        assert "expert researcher" in persona.content.lower()
-
-    def test_list_actions_with_real_data(self, temp_project: Path) -> None:
-        """Test list_actions tool with real project data."""
-        server = create_server(config_dir=temp_project, mode="cli")
-
         action_names = server.generator.loader.list_actions()
-
-        assert len(action_names) == 2
         assert "research" in action_names
         assert "analyze" in action_names
 
-    def test_generate_prompt_with_real_data(self, temp_project: Path) -> None:
-        """Test generate_prompt with real project data."""
-        server = create_server(config_dir=temp_project, mode="cli")
-
-        # Generate a prompt
+        # Generate a prompt directly through composer
         prompt = server.generator.composer.compose(
             action_name="research",
             persona_name="researcher",
@@ -200,16 +275,14 @@ class TestMCPToolsIntegration:
         assert "conduct thorough research" in prompt.lower()
         assert "copilot" in prompt.lower()  # From config
 
-    def test_generate_prompt_with_examples(self, temp_project: Path) -> None:
-        """Test generate_prompt with examples included."""
+    def test_prompt_metadata_from_config(self, temp_project: Path) -> None:
+        """Test that prompt metadata is loaded from config."""
         server = create_server(config_dir=temp_project, mode="cli")
 
-        # Generate with examples
-        prompt = server.generator.composer.compose(
-            action_name="research",
-            persona_name="researcher",
-            example_names=["example1"],
-        )
+        # Check metadata from prompt configs
+        research_prompt = server.pareidolia_config.prompt[0]
+        assert research_prompt.metadata.get("description") == "Research prompt"
 
-        assert "expert researcher" in prompt.lower()
-        assert "conduct thorough research" in prompt.lower()
+        analyze_prompt = server.pareidolia_config.prompt[1]
+        assert analyze_prompt.metadata.get("description") == "Analysis prompt"
+

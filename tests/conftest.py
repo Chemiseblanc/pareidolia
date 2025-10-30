@@ -68,19 +68,19 @@ def sample_project(temp_dir: Path) -> Path:
     pareidolia_root = project_root / "pareidolia"
 
     # Create directories
-    (pareidolia_root / "persona").mkdir(parents=True)
-    (pareidolia_root / "action").mkdir(parents=True)
-    (pareidolia_root / "example").mkdir(parents=True)
+    (pareidolia_root / "personas").mkdir(parents=True)
+    (pareidolia_root / "actions").mkdir(parents=True)
+    (pareidolia_root / "examples").mkdir(parents=True)
 
     # Create sample persona
-    persona_file = pareidolia_root / "persona" / "researcher.md"
+    persona_file = pareidolia_root / "personas" / "researcher.md"
     persona_file.write_text(
         "You are an expert researcher with deep analytical skills.\n"
         "You approach problems methodically and thoroughly.\n"
     )
 
     # Create sample action
-    action_file = pareidolia_root / "action" / "research.md.j2"
+    action_file = pareidolia_root / "actions" / "research.md.j2"
     action_file.write_text(
         "{{ persona }}\n\n"
         "Your task is to research the following topic and provide "
@@ -94,7 +94,7 @@ def sample_project(temp_dir: Path) -> Path:
     )
 
     # Create sample example
-    example_file = pareidolia_root / "example" / "report-format.md"
+    example_file = pareidolia_root / "examples" / "report-format.md"
     example_file.write_text(
         "# Research Report Example\n\n"
         "## Overview\n"

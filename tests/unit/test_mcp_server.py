@@ -41,7 +41,7 @@ class TestPareidoliaMCPServer:
     ) -> None:
         """Test that server loads Pareidolia config from file if exists."""
         # Create a minimal config file
-        config_file = tmp_path / ".pareidolia.toml"
+        config_file = tmp_path / "pareidolia.toml"
         config_file.write_text(
             """
 [pareidolia]
@@ -54,9 +54,9 @@ output_dir = "prompts"
         )
 
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         server_config = MCPServerConfig(config_dir=tmp_path)
         server = PareidoliaMCPServer(server_config)
@@ -69,9 +69,9 @@ output_dir = "prompts"
     ) -> None:
         """Test that server uses defaults when no config file exists."""
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         server_config = MCPServerConfig(config_dir=tmp_path)
         server = PareidoliaMCPServer(server_config)
@@ -82,9 +82,9 @@ output_dir = "prompts"
     def test_server_initialization_creates_mcp_instance(self, tmp_path: Path) -> None:
         """Test that server creates FastMCP instance."""
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         server_config = MCPServerConfig(config_dir=tmp_path)
         server = PareidoliaMCPServer(server_config)
@@ -95,9 +95,9 @@ output_dir = "prompts"
     def test_server_initialization_creates_generator(self, tmp_path: Path) -> None:
         """Test that server creates Generator instance."""
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         server_config = MCPServerConfig(config_dir=tmp_path)
         server = PareidoliaMCPServer(server_config)
@@ -110,9 +110,9 @@ output_dir = "prompts"
     ) -> None:
         """Test that server runs with stdio transport in CLI mode."""
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         # Setup mock
         mock_mcp = Mock()
@@ -131,9 +131,9 @@ output_dir = "prompts"
     ) -> None:
         """Test that server runs without args in MCP mode."""
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         # Setup mock
         mock_mcp = Mock()
@@ -153,9 +153,9 @@ class TestCreateServer:
     def test_create_server_with_defaults(self, tmp_path: Path) -> None:
         """Test creating server with default parameters."""
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         with patch("pareidolia.mcp.server.Path.cwd", return_value=tmp_path):
             server = create_server()
@@ -166,9 +166,9 @@ class TestCreateServer:
     def test_create_server_with_custom_config_dir(self, tmp_path: Path) -> None:
         """Test creating server with custom config directory."""
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         server = create_server(config_dir=tmp_path, mode="cli")
 
@@ -178,9 +178,9 @@ class TestCreateServer:
     def test_create_server_with_mcp_mode(self, tmp_path: Path) -> None:
         """Test creating server in MCP mode."""
         # Create necessary directories
-        (tmp_path / "pareidolia" / "persona").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "action").mkdir(parents=True)
-        (tmp_path / "pareidolia" / "example").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "personas").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "actions").mkdir(parents=True)
+        (tmp_path / "pareidolia" / "examples").mkdir(parents=True)
 
         server = create_server(config_dir=tmp_path, mode="mcp")
 

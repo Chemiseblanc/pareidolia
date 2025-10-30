@@ -36,7 +36,7 @@ def test_init_in_current_directory(tmp_path: Path) -> None:
     assert "Project initialized successfully!" in result.stdout
 
     # Verify config file created
-    config_file = tmp_path / ".pareidolia.toml"
+    config_file = tmp_path / "pareidolia.toml"
     assert config_file.exists()
 
     # Verify directory structure created
@@ -91,7 +91,7 @@ def test_init_in_specific_directory(tmp_path: Path) -> None:
     assert project_dir.is_dir()
 
     # Verify structure is created in the specified directory
-    config_file = project_dir / ".pareidolia.toml"
+    config_file = project_dir / "pareidolia.toml"
     assert config_file.exists()
 
     pareidolia_dir = project_dir / "pareidolia"
@@ -122,7 +122,7 @@ def test_init_with_no_scaffold_flag(tmp_path: Path) -> None:
     assert "Project initialized successfully!" in result.stdout
 
     # Verify config file created
-    config_file = tmp_path / ".pareidolia.toml"
+    config_file = tmp_path / "pareidolia.toml"
     assert config_file.exists()
 
     # Verify config created message but not scaffolding messages
@@ -163,7 +163,7 @@ def test_init_specific_dir_with_no_scaffold(tmp_path: Path) -> None:
     assert project_dir.exists()
 
     # Verify only config file exists
-    config_file = project_dir / ".pareidolia.toml"
+    config_file = project_dir / "pareidolia.toml"
     assert config_file.exists()
 
     # Verify no scaffolding
@@ -177,7 +177,7 @@ def test_init_specific_dir_with_no_scaffold(tmp_path: Path) -> None:
 def test_init_with_existing_config_file(tmp_path: Path) -> None:
     """Test init command fails when config file already exists."""
     # Create existing config file
-    config_file = tmp_path / ".pareidolia.toml"
+    config_file = tmp_path / "pareidolia.toml"
     config_file.write_text("[pareidolia]\nroot = 'test'\n")
 
     # Run init
@@ -225,7 +225,7 @@ def test_init_creates_valid_parseable_config(tmp_path: Path) -> None:
     assert result.returncode == 0
 
     # Load the created config file
-    config_file = tmp_path / ".pareidolia.toml"
+    config_file = tmp_path / "pareidolia.toml"
     assert config_file.exists()
 
     # Parse the config file using PareidoliaConfig
@@ -252,7 +252,7 @@ def test_init_config_file_content(tmp_path: Path) -> None:
     assert result.returncode == 0
 
     # Read the config file content
-    config_file = tmp_path / ".pareidolia.toml"
+    config_file = tmp_path / "pareidolia.toml"
     content = config_file.read_text()
 
     # Verify it's valid TOML format
@@ -362,7 +362,7 @@ def test_init_nested_directory_creation(tmp_path: Path) -> None:
     assert project_dir.exists()
 
     # Verify structure created in nested location
-    config_file = project_dir / ".pareidolia.toml"
+    config_file = project_dir / "pareidolia.toml"
     assert config_file.exists()
 
     pareidolia_dir = project_dir / "pareidolia"
@@ -388,7 +388,7 @@ def test_init_preserves_existing_directories(tmp_path: Path) -> None:
     assert "Existing Project" in readme.read_text()
 
     # Verify new files created
-    config_file = project_dir / ".pareidolia.toml"
+    config_file = project_dir / "pareidolia.toml"
     assert config_file.exists()
 
     pareidolia_dir = project_dir / "pareidolia"

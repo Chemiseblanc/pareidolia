@@ -9,7 +9,7 @@ from fastmcp import FastMCP
 
 from pareidolia.core.config import PareidoliaConfig
 from pareidolia.generators.generator import Generator
-from pareidolia.mcp.tools import register_tools
+from pareidolia.mcp.prompts import register_prompts
 
 
 @dataclass(frozen=True)
@@ -56,8 +56,8 @@ class PareidoliaMCPServer:
         # Initialize generator
         self.generator = Generator(self.pareidolia_config)
 
-        # Register MCP tools
-        register_tools(self.mcp, self.generator, self.pareidolia_config)
+        # Register MCP prompts
+        register_prompts(self.mcp, self.generator, self.pareidolia_config)
 
     def _load_pareidolia_config(self) -> PareidoliaConfig:
         """Load Pareidolia configuration from the config directory.
@@ -68,7 +68,7 @@ class PareidoliaMCPServer:
         Raises:
             ConfigurationError: If configuration cannot be loaded
         """
-        config_file = self.config.config_dir / ".pareidolia.toml"
+        config_file = self.config.config_dir / "pareidolia.toml"
 
         if config_file.exists():
             return PareidoliaConfig.from_file(config_file)

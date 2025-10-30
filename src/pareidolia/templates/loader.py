@@ -44,7 +44,7 @@ class TemplateLoader:
         if name in self._persona_cache:
             return self._persona_cache[name]
 
-        persona_dir = self.root / "persona"
+        persona_dir = self.root / "personas"
         persona_path = persona_dir / f"{name}.md"
 
         if not persona_path.exists():
@@ -73,7 +73,7 @@ class TemplateLoader:
         if cache_key in self._action_cache:
             return self._action_cache[cache_key]
 
-        action_dir = self.root / "action"
+        action_dir = self.root / "actions"
 
         # Try different template extensions
         extensions = [".md.j2", ".md.jinja", ".md.jinja2"]
@@ -109,7 +109,7 @@ class TemplateLoader:
         if name in self._example_cache:
             return self._example_cache[name]
 
-        example_dir = self.root / "example"
+        example_dir = self.root / "examples"
 
         # Determine if this is a template or plain markdown
         is_template = False
@@ -157,7 +157,7 @@ class TemplateLoader:
         Returns:
             List of action names (without extensions)
         """
-        action_dir = self.root / "action"
+        action_dir = self.root / "actions"
         if not action_dir.exists():
             return []
 
@@ -180,7 +180,7 @@ class TemplateLoader:
         Returns:
             List of persona names (without extensions)
         """
-        persona_dir = self.root / "persona"
+        persona_dir = self.root / "personas"
         if not persona_dir.exists():
             return []
 
@@ -196,7 +196,7 @@ class TemplateLoader:
         Returns:
             List of example names (without extensions)
         """
-        example_dir = self.root / "example"
+        example_dir = self.root / "examples"
         if not example_dir.exists():
             return []
 

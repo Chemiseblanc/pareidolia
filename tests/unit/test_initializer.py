@@ -18,7 +18,7 @@ class TestCreateConfigFile:
         initializer = ProjectInitializer()
         initializer.create_config_file(tmp_path)
 
-        config_path = tmp_path / ".pareidolia.toml"
+        config_path = tmp_path / "pareidolia.toml"
         assert config_path.exists(), "Config file should be created"
 
         # Verify file contains valid TOML by parsing it
@@ -39,7 +39,7 @@ class TestCreateConfigFile:
     ) -> None:
         """Test that existing file raises error when overwrite=False."""
         initializer = ProjectInitializer()
-        config_path = tmp_path / ".pareidolia.toml"
+        config_path = tmp_path / "pareidolia.toml"
 
         # Create the file first
         config_path.write_text("# Existing config")
@@ -57,7 +57,7 @@ class TestCreateConfigFile:
     def test_create_config_file_overwrites_with_flag(self, tmp_path: Path) -> None:
         """Test that file is overwritten when overwrite=True."""
         initializer = ProjectInitializer()
-        config_path = tmp_path / ".pareidolia.toml"
+        config_path = tmp_path / "pareidolia.toml"
 
         # Create initial file
         config_path.write_text("# Old config")
@@ -298,7 +298,7 @@ class TestFullInitializationWorkflow:
 
         # Step 1: Create config file
         initializer.create_config_file(project_root)
-        assert (project_root / ".pareidolia.toml").exists()
+        assert (project_root / "pareidolia.toml").exists()
 
         # Step 2: Scaffold directories
         initializer.scaffold_directories(pareidolia_root)
@@ -320,7 +320,7 @@ class TestFullInitializationWorkflow:
         assert (prompts_dir / ".gitignore").exists()
 
         # Verify config is valid and parseable
-        with open(project_root / ".pareidolia.toml", "rb") as f:
+        with open(project_root / "pareidolia.toml", "rb") as f:
             config_data = tomllib.load(f)
 
         assert config_data["pareidolia"]["root"] == "pareidolia"
@@ -328,7 +328,7 @@ class TestFullInitializationWorkflow:
 
         # Verify all expected files exist
         expected_files = [
-            project_root / ".pareidolia.toml",
+            project_root / "pareidolia.toml",
             pareidolia_root / "personas" / "researcher.md",
             pareidolia_root / "actions" / "analyze.md.j2",
             pareidolia_root / "examples" / "analysis-output.md",
@@ -376,7 +376,7 @@ class TestFullInitializationWorkflow:
         initializer.create_example_files(pareidolia_root)
 
         # Get file modification times
-        config_mtime = (project_root / ".pareidolia.toml").stat().st_mtime
+        config_mtime = (project_root / "pareidolia.toml").stat().st_mtime
 
         # Run scaffold again (should be safe)
         initializer.scaffold_directories(pareidolia_root)
@@ -386,7 +386,7 @@ class TestFullInitializationWorkflow:
 
         # Config file should be unchanged (we didn't call create_config_file
         # with overwrite)
-        assert (project_root / ".pareidolia.toml").stat().st_mtime == config_mtime
+        assert (project_root / "pareidolia.toml").stat().st_mtime == config_mtime
 
         # Note: create_example_files is NOT idempotent by design - it will
         # overwrite files. We only test that scaffold_directories is idempotent.

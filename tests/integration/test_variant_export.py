@@ -12,14 +12,14 @@ from pareidolia.generators.generator import Generator
 def temp_project_dir(tmp_path):
     """Create a temporary project directory with minimal structure."""
     # Create persona
-    persona_dir = tmp_path / "persona"
+    persona_dir = tmp_path / "personas"
     persona_dir.mkdir()
     (persona_dir / "researcher.md").write_text(
         "You are an expert researcher with deep analytical skills."
     )
 
     # Create action
-    action_dir = tmp_path / "action"
+    action_dir = tmp_path / "actions"
     action_dir.mkdir()
     (action_dir / "research.md.j2").write_text(
         "Research the following topic:\n{{ persona }}\n\nProvide detailed findings."
@@ -170,7 +170,7 @@ def test_export_variants_only_for_matching_action(
 ):
     """Test that variants are only generated when action matches config."""
     # Create another action that doesn't match
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "analyze.md.j2").write_text(
         "Analyze the following:\n{{ persona }}\n\nProvide insights."
     )
@@ -278,7 +278,7 @@ def test_export_all_generates_variants_for_matching_actions(
 ):
     """Test that export_all generates variants only for matching actions."""
     # Create additional action
-    action_dir = temp_project_dir / "action"
+    action_dir = temp_project_dir / "actions"
     (action_dir / "analyze.md.j2").write_text(
         "Analyze the following:\n{{ persona }}"
     )
