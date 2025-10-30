@@ -57,9 +57,6 @@ pareidolia generate
 
 # Override settings via command line
 pareidolia generate --tool copilot --output-dir output/
-
-# Generate as a library with tool-specific naming
-pareidolia generate --tool copilot --library promptlib
 ```
 
 ### 3. Use Remote Prompt Repositories
@@ -122,7 +119,7 @@ root = "pareidolia"  # Directory containing personas/actions/examples folders
 
 [generate]
 tool = "copilot"             # or "claude-code", etc.
-library = "promptlib"        # Optional: enables library format when set
+library = "promptlib"        # Optional: enables library format (config-file-only)
 output_dir = "prompts"       # Where to write generated prompts
 
 # Global metadata - applies to all prompts by default

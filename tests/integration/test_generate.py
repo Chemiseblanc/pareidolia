@@ -198,10 +198,18 @@ temperature = 0.8
     def test_generate_copilot_library_format(self, sample_project: Path) -> None:
         """Test generating in Copilot library format."""
         config_file = sample_project / "pareidolia.toml"
-        config = PareidoliaConfig.from_file(config_file)
 
-        # Override to use Copilot with library
-        config = config.merge_overrides(tool="copilot", library="testlib")
+        # Update config file to include library setting
+        config_file.write_text(
+            '[pareidolia]\n'
+            'root = "pareidolia"\n\n'
+            '[generate]\n'
+            'tool = "copilot"\n'
+            'library = "testlib"\n'
+            'output_dir = "prompts"\n'
+        )
+
+        config = PareidoliaConfig.from_file(config_file)
 
         generator = Generator(config)
         result = generator.generate_all()
@@ -215,10 +223,18 @@ temperature = 0.8
     def test_generate_claude_code_library_format(self, sample_project: Path) -> None:
         """Test generating in Claude Code library format."""
         config_file = sample_project / "pareidolia.toml"
-        config = PareidoliaConfig.from_file(config_file)
 
-        # Override to use Claude Code with library
-        config = config.merge_overrides(tool="claude-code", library="testlib")
+        # Update config file to include library setting
+        config_file.write_text(
+            '[pareidolia]\n'
+            'root = "pareidolia"\n\n'
+            '[generate]\n'
+            'tool = "claude-code"\n'
+            'library = "testlib"\n'
+            'output_dir = "prompts"\n'
+        )
+
+        config = PareidoliaConfig.from_file(config_file)
 
         generator = Generator(config)
         result = generator.generate_all()

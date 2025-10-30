@@ -70,12 +70,6 @@ def create_parser() -> argparse.ArgumentParser:
     )
 
     generate_parser.add_argument(
-        "--library",
-        type=str,
-        help="Library name for bundled generation",
-    )
-
-    generate_parser.add_argument(
         "--output-dir",
         type=str,
         help="Output directory for generated prompts",
@@ -301,7 +295,6 @@ def main() -> int:
         if args.command == "generate":
             config = config.merge_overrides(
                 tool=args.tool,
-                library=args.library,
                 output_dir=args.output_dir,
             )
     except PareidoliaError as e:

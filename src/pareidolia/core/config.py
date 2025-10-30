@@ -221,7 +221,6 @@ class PareidoliaConfig:
         cls,
         project_root: Path | None = None,
         tool: str = "standard",
-        library: str | None = None,
         output_dir: str = "prompts",
     ) -> "PareidoliaConfig":
         """Create configuration with default values.
@@ -229,7 +228,6 @@ class PareidoliaConfig:
         Args:
             project_root: Project root directory (defaults to current directory)
             tool: Target tool name
-            library: Optional library name
             output_dir: Output directory (relative to project_root)
 
         Returns:
@@ -240,21 +238,19 @@ class PareidoliaConfig:
 
         root = project_root / "pareidolia"
         output_path = project_root / output_dir
-        generate = GenerateConfig(tool=tool, library=library, output_dir=output_path)
+        generate = GenerateConfig(tool=tool, library=None, output_dir=output_path)
 
         return cls(root=root, generate=generate, metadata={}, prompt=[])
 
     def merge_overrides(
         self,
         tool: str | None = None,
-        library: str | None = None,
         output_dir: str | None = None,
     ) -> "PareidoliaConfig":
         """Create a new configuration with CLI overrides applied.
 
         Args:
             tool: Override tool setting
-            library: Override library setting
             output_dir: Override output directory (relative to config location)
 
         Returns:
@@ -268,7 +264,7 @@ class PareidoliaConfig:
 
         generate = GenerateConfig(
             tool=tool if tool is not None else self.generate.tool,
-            library=library if library is not None else self.generate.library,
+            library=self.generate.library,
             output_dir=output_path,
         )
 
