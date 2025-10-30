@@ -9,8 +9,13 @@ try:
 except ImportError:
     import tomli as tomllib  # type: ignore
 
-from pareidolia.core.exceptions import ConfigurationError, ValidationError
+from pareidolia.core.exceptions import (
+    ConfigurationError,
+    PareidoliaError,
+    ValidationError,
+)
 from pareidolia.core.models import GenerateConfig, PromptConfig
+from pareidolia.utils.filesystem import FileSystem, LocalFileSystem, parse_source_uri
 from pareidolia.utils.validation import validate_config_schema
 
 
@@ -55,6 +60,73 @@ class PareidoliaConfig:
             ) from e
 
         return cls.from_dict(config_data, config_path.parent)
+
+    @classmethod
+    def from_source(cls, source_uri: str) -> tuple["PareidoliaConfig", FileSystem, str]:
+        """Load config from a source URI and return config + filesystem.
+
+        Supports:
+        - Local paths: "/path/to/project" or "./relative/path"
+        - File URIs: "file:///absolute/path"
+        - GitHub URIs: "github://org/repo[@ref][/subpath]"
+
+        Args:
+            source_uri: Source URI string
+
+        Returns:
+            Tuple of (PareidoliaConfig, FileSystem, template_root)
+            - PareidoliaConfig: Parsed configuration
+            - FileSystem: Filesystem implementation for templates
+            - template_root: Root path within filesystem for templates
+
+        Raises:
+            ValueError: If URI format is invalid
+            PareidoliaError: If config file not found or invalid
+        """
+        # Parse source URI to get FileSystem
+        try:
+            filesystem = parse_source_uri(source_uri)
+        except ValueError as e:
+            raise ValueError(f"Invalid source URI: {source_uri}") from e
+
+        # Read pareidolia.toml from filesystem
+        try:
+            toml_content = filesystem.read_file("pareidolia.toml")
+        except FileNotFoundError as e:
+            raise PareidoliaError(
+                f"pareidolia.toml not found in source: {source_uri}"
+            ) from e
+        except OSError as e:
+            raise PareidoliaError(
+                f"Failed to read pareidolia.toml from source: {source_uri}"
+            ) from e
+
+        # Parse TOML content
+        try:
+            config_data = tomllib.loads(toml_content)
+        except Exception as e:
+            raise ConfigurationError(
+                f"Failed to parse pareidolia.toml from source: {source_uri}"
+            ) from e
+
+        # Extract template root from config (defaults to "pareidolia")
+        template_root = config_data.get("pareidolia", {}).get("root", "pareidolia")
+
+        # For config parsing, we need a base_path
+        # For local filesystems, use the actual path
+        # For remote filesystems, use current directory (output will be local)
+        if isinstance(filesystem, LocalFileSystem):
+            base_path = filesystem.base_path
+        else:
+            base_path = Path.cwd()  # Remote sources write output locally
+
+        # Create config from dict
+        try:
+            config = cls.from_dict(config_data, base_path)
+        except ConfigurationError:
+            raise
+
+        return config, filesystem, template_root
 
     @classmethod
     def from_dict(
