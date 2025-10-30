@@ -19,99 +19,7 @@ Pareidolia is a Python CLI application for generating AI prompt template collect
 - **Documentation**: Docstrings required for all public APIs (Google style)
 - **Testing**: pytest test coverage for all new features
 
-### 2. Git Workflow
-
-#### Branching Strategy
-
-- `master`: Main development branch (stable)
-- `feature/<name>`: Feature branches for new functionality
-- `bugfix/<name>`: Bug fix branches
-- `refactor/<name>`: Code refactoring branches
-
-#### Commit Message Guidelines
-
-Follow Linux kernel commit message format (without sign-off):
-
-```
-<component>: <short summary> (50 chars max)
-
-<Detailed description wrapped at 72 characters. Explain the problem
-being solved and why this change is being made. Focus on the "why"
-rather than the "how".>
-
-<Additional paragraphs as needed>
-
-- Bullet points are acceptable
-- Use hyphens or asterisks for bullets
-
-Co-authored-by: <Current User Name> <user@email.com>
-```
-
-#### Commit Authorship
-
-AI agents should set commits to be authored by Copilot with proper attribution:
-
-- **Author**: Set to `Copilot <Copilot@users.noreply.github.com>`
-- **Co-authored-by**: Add trailer with current git user's name and email
-
-This can be done with:
-```bash
-# Get current user info
-CURRENT_USER=$(git config user.name)
-CURRENT_EMAIL=$(git config user.email)
-
-# Commit with Copilot as author and add co-author trailer
-git commit --author="Copilot <Copilot@users.noreply.github.com>" \
-  -m "<component>: <short summary>
-
-<Detailed description>
-
-Co-authored-by: $CURRENT_USER <$CURRENT_EMAIL>"
-```
-
-**Components** might include:
-- `cli`: Command-line interface changes
-- `core`: Core functionality
-- `templates`: Template engine changes
-- `generators`: Prompt generation logic
-- `tests`: Test suite changes
-- `docs`: Documentation updates
-- `build`: Build system or dependency changes
-
-**Examples**:
-
-```
-cli: add library creation command
-
-Implement the 'library create' subcommand to bundle related prompts
-into tool-specific collections. This allows users to generate multiple
-prompts with consistent prefixes for different AI tools.
-
-- Add library subparser to CLI
-- Implement naming convention mapping for tools
-- Add validation for library names
-
-Co-authored-by: Matthew Gibson <matt@mgibson.ca>
-```
-
-```
-templates: integrate jinja2 template engine
-
-Add Jinja2 support for compiling persona, task, and example fragments
-into complete prompts. This provides flexible composition and enables
-variable substitution in templates.
-
-Co-authored-by: Matthew Gibson <matt@mgibson.ca>
-```
-
-#### Commit Best Practices
-
-- **Atomic commits**: Each commit should represent one logical change
-- **Buildable commits**: Each commit should leave the codebase in a working state
-- **Test with commits**: Add tests in the same commit as the feature when possible
-- **Fix in place**: If you find an issue in your branch, amend or fixup rather than adding "fix" commits
-
-### 3. Architecture Guidelines
+### 2. Architecture Guidelines
 
 #### Module Organization
 
@@ -141,7 +49,7 @@ src/pareidolia/
     └── validation.py     # Input validation
 ```
 
-#### Design Patterns
+### 3. Design Patterns
 
 - **Separation of Concerns**: Keep CLI, business logic, and I/O separate
 - **Dependency Injection**: Pass dependencies rather than importing globals
@@ -194,9 +102,9 @@ def generate_prompt(
     ...
 ```
 
-### 4. Testing Requirements
+## Testing Requirements
 
-#### Test Structure
+### Test Structure
 
 ```
 tests/
@@ -215,7 +123,7 @@ tests/
     └── templates/
 ```
 
-#### Testing Guidelines
+### Testing Guidelines
 
 - **Unit tests**: Test individual functions and classes in isolation
 - **Integration tests**: Test CLI commands and workflows
@@ -224,7 +132,7 @@ tests/
 - **Coverage**: Aim for >90% code coverage
 - **Test naming**: Use descriptive names: `test_<what>_<condition>_<expected>`
 
-#### Example Tests
+### Example Tests
 
 ```python
 import pytest
@@ -244,7 +152,7 @@ def test_persona_creation_rejects_invalid_names(invalid_name: str):
         Persona(name=invalid_name, description="Test", characteristics=[])
 ```
 
-### 5. Development Workflow
+## Development Workflow
 
 1. **Start feature**:
    ```bash
@@ -291,7 +199,7 @@ def test_persona_creation_rejects_invalid_names(invalid_name: str):
    git branch -d feature/library-creation
    ```
 
-### 6. Dependencies
+## Dependencies
 
 - **Runtime**: Jinja2 (templating)
 - **Development**: pytest, ruff, mypy, pytest-cov
@@ -303,7 +211,7 @@ uv add jinja2
 uv add --dev pytest ruff mypy pytest-cov
 ```
 
-### 7. Common Tasks for AI Agents
+## Common Tasks for AI Agents
 
 When asked to implement features:
 
@@ -317,7 +225,7 @@ When asked to implement features:
 8. **Commit with proper message** following guidelines
 9. **Verify merge-readiness** before merging to master
 
-### 8. Error Handling
+## Error Handling
 
 - Use specific exception types
 - Provide helpful error messages

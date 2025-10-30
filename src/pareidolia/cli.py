@@ -10,8 +10,6 @@ from pareidolia.core.config import PareidoliaConfig
 from pareidolia.core.exceptions import ConfigurationError, PareidoliaError
 from pareidolia.generators.generator import Generator
 from pareidolia.generators.initializer import ProjectInitializer
-from pareidolia.generators.variant_cache import VariantCache
-from pareidolia.generators.variant_saver import VariantSaver
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -123,37 +121,6 @@ def create_parser() -> argparse.ArgumentParser:
         "--no-scaffold",
         action="store_true",
         help="Only create configuration file without directory structure and examples",
-    )
-
-    # Save command
-    save_parser = subparsers.add_parser(
-        "save",
-        help="Save cached variants as action templates",
-    )
-
-    save_parser.add_argument(
-        "--variant",
-        nargs="+",
-        type=str,
-        help="Filter by variant name(s)",
-    )
-
-    save_parser.add_argument(
-        "--action",
-        type=str,
-        help="Filter by action name",
-    )
-
-    save_parser.add_argument(
-        "--list",
-        action="store_true",
-        help="List cached variants without saving",
-    )
-
-    save_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Overwrite existing files",
     )
 
     return parser
@@ -293,133 +260,7 @@ def handle_generate(
             for error in result.errors:
                 print(f"  - {error}")
 
-        # Check if variants were cached
-        cache = VariantCache()
-        if cache.has_variants():
-            count = cache.count()
-            print(
-                f"\n{count} variant(s) cached. "
-                "Use 'pareidolia save' to persist them as templates."
-            )
-
         return 0 if result.success else 1
-
-    except PareidoliaError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
-    except Exception as e:
-        print(f"Unexpected error: {e}", file=sys.stderr)
-        return 1
-
-
-def handle_save(
-    config: PareidoliaConfig,
-    variant_names: list[str] | None,
-    action_name: str | None,
-    list_only: bool,
-    force: bool,
-) -> int:
-    """Handle the save command.
-
-    Args:
-        config: Pareidolia configuration
-        variant_names: Optional list of variant names to filter by
-        action_name: Optional action name to filter by
-        list_only: If True, only list cached variants without saving
-        force: If True, overwrite existing files
-
-    Returns:
-        Exit code (0 for success, 1 for failure)
-    """
-    try:
-        # Get all cached variants
-        cache = VariantCache()
-        cached_variants = cache.get_all()
-
-        if not cached_variants:
-            print("No cached variants found.")
-            print("Generate variants first using 'pareidolia generate'.")
-            return 1
-
-        # Apply filters
-        filtered_variants = cached_variants
-
-        if variant_names:
-            filtered_variants = [
-                v for v in filtered_variants if v.variant_name in variant_names
-            ]
-
-        if action_name:
-            filtered_variants = [
-                v for v in filtered_variants if v.action_name == action_name
-            ]
-
-        if not filtered_variants:
-            print("No cached variants match the specified filters.")
-            return 1
-
-        # List only mode
-        if list_only:
-            print("Cached Variants:")
-            print(
-                f"  {'Variant':<15} {'Action':<15} {'Persona':<15} {'Generated':<20}"
-            )
-            print(
-                f"  {'-' * 15} {'-' * 15} {'-' * 15} {'-' * 20}"
-            )
-            for variant in filtered_variants:
-                timestamp = variant.generated_at.strftime("%Y-%m-%d %H:%M:%S")
-                print(
-                    f"  {variant.variant_name:<15} "
-                    f"{variant.action_name:<15} "
-                    f"{variant.persona_name:<15} "
-                    f"{timestamp:<20}"
-                )
-            return 0
-
-        # Save variants
-        saver = VariantSaver(config.root.parent)
-        results = saver.save_all(filtered_variants, force=force)
-
-        # Categorize results
-        saved = []
-        skipped = []
-        errors = []
-
-        for path, (was_saved, error_msg) in results.items():
-            if was_saved:
-                saved.append(path)
-            elif error_msg == "File exists":
-                # File exists is a skip, not an error
-                skipped.append(path)
-            elif error_msg:
-                # Other error messages are real errors
-                errors.append((path, error_msg))
-            else:
-                # was_saved=False, no error_msg - shouldn't happen but treat as skip
-                skipped.append(path)
-
-        # Display results
-        if saved:
-            print(f"Successfully saved {len(saved)} template(s):")
-            for path in saved:
-                print(f"  ✓ {path}")
-
-        if skipped:
-            print(
-                f"\nSkipped {len(skipped)} existing file(s) "
-                "(use --force to overwrite):"
-            )
-            for path in skipped:
-                print(f"  - {path}")
-
-        if errors:
-            print(f"\nFailed to save {len(errors)} template(s):")
-            for path, error_msg in errors:
-                print(f"  ✗ {path}: {error_msg}")
-
-        # Return 0 if there were saves or skips (no errors), 1 if any errors
-        return 0 if not errors else 1
 
     except PareidoliaError as e:
         print(f"Error: {e}", file=sys.stderr)
@@ -477,15 +318,6 @@ def main() -> int:
             args.persona,
             args.examples,
             args.action,
-        )
-
-    if args.command == "save":
-        return handle_save(
-            config,
-            args.variant,
-            args.action,
-            args.list,
-            args.force,
         )
 
     return 0
