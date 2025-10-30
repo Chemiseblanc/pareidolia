@@ -62,6 +62,32 @@ pareidolia generate --tool copilot --output-dir output/
 pareidolia generate --tool copilot --library promptlib
 ```
 
+### 3. Use Remote Prompt Repositories
+
+Load prompts directly from GitHub repositories without cloning:
+
+```bash
+# Use a GitHub repository as source
+pareidolia generate --source-dir github://org/repo
+
+# Specify a branch or tag
+pareidolia generate --source-dir github://org/repo@main
+pareidolia generate --source-dir github://org/repo@v1.0.0
+
+# Use a subdirectory within the repository
+pareidolia generate --source-dir github://org/repo/prompts
+
+# Combine branch and subpath
+pareidolia generate --source-dir github://org/repo@develop/my-prompts
+```
+
+**Supported Source URIs:**
+- **Local path**: `/path/to/prompts` or `./my-prompts`
+- **File URI**: `file:///absolute/path`
+- **GitHub URI**: `github://org/repo[@ref][/subpath]`
+
+Remote sources are **read-only** and load templates directly from GitHub's raw content API without requiring git or local disk writes. The `pareidolia.toml` config file must exist in the repository root (or specified subpath).
+
 ## Project Structure
 
 The `init` command creates this structure:
@@ -582,10 +608,17 @@ uv sync
 The MCP server runs in stdio transport mode for integration with AI tools:
 
 ```bash
-pareidolia --mcp --config-dir ./my-project
+# Use local directory
+pareidolia --mcp --source-dir ./my-project
+
+# Use GitHub repository
+pareidolia --mcp --source-dir github://org/repo
+
+# Use specific branch
+pareidolia --mcp --source-dir github://org/repo@main
 ```
 
-If no `--config-dir` is specified, the current directory is used.
+If no `--source-dir` is specified, the current directory is used. All source URI formats are supported (local paths, `file://`, and `github://`).
 
 ### MCP Prompts
 
@@ -624,7 +657,20 @@ Configure your AI tool (e.g., Claude Desktop, Cline) to use the MCP server:
   "mcpServers": {
     "pareidolia": {
       "command": "pareidolia",
-      "args": ["--mcp", "--config-dir", "/path/to/your/project"]
+      "args": ["--mcp", "--source-dir", "/path/to/your/project"]
+    }
+  }
+}
+```
+
+Or use a remote GitHub repository:
+
+```json
+{
+  "mcpServers": {
+    "pareidolia": {
+      "command": "pareidolia",
+      "args": ["--mcp", "--source-dir", "github://yourorg/prompts@main"]
     }
   }
 }
