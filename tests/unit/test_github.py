@@ -1,17 +1,17 @@
 """Unit tests for GitHub URL parsing and filesystem."""
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 from urllib.error import HTTPError, URLError
 
+import pytest
+
 from pareidolia.core.exceptions import PareidoliaError
+from pareidolia.utils.filesystem import GitHubFileSystem
 from pareidolia.utils.github import (
     GitHubURL,
-    parse_github_url,
     create_github_filesystem,
+    parse_github_url,
 )
-from pareidolia.utils.filesystem import GitHubFileSystem
 
 
 class TestParseGitHubURL:
@@ -376,9 +376,8 @@ class TestGitHubFileSystem:
     @patch("urllib.request.urlopen")
     def test_read_file_timeout(self, mock_urlopen: Mock) -> None:
         """Test handling of timeout errors."""
-        import socket
 
-        mock_urlopen.side_effect = socket.timeout("Request timed out")
+        mock_urlopen.side_effect = TimeoutError("Request timed out")
 
         fs = GitHubFileSystem("org", "repo", "main", "")
 
@@ -431,7 +430,7 @@ class TestGitHubFileSystem:
     def test_read_file_utf8_decoding(self, mock_urlopen: Mock) -> None:
         """Test UTF-8 decoding of file content."""
         # Use actual UTF-8 encoded content
-        utf8_content = "Hello 世界! 🌍".encode("utf-8")
+        utf8_content = "Hello 世界! 🌍".encode()
         mock_response = MagicMock()
         mock_response.read.return_value = utf8_content
         mock_response.__enter__.return_value = mock_response

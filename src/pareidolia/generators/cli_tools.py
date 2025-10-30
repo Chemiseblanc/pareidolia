@@ -65,7 +65,7 @@ def check_tool_available(command: str) -> bool:
 
 class BaseCLITool(ABC):
     """Abstract base class for AI CLI tool implementations.
-    
+
     This class provides common subprocess execution logic and error handling
     for AI CLI tools. Subclasses must implement tool-specific command building.
     """
@@ -74,7 +74,7 @@ class BaseCLITool(ABC):
     @abstractmethod
     def name(self) -> str:
         """Return the tool name.
-        
+
         Returns:
             Tool name identifier
         """
@@ -84,7 +84,7 @@ class BaseCLITool(ABC):
     @abstractmethod
     def command(self) -> str:
         """Return the command name to check for availability.
-        
+
         Returns:
             Command name to check in PATH
         """
@@ -93,7 +93,7 @@ class BaseCLITool(ABC):
     @abstractmethod
     def _build_command_args(self) -> list[str]:
         """Build tool-specific command arguments.
-        
+
         Returns:
             List of command arguments to pass to subprocess
         """
@@ -113,14 +113,14 @@ class BaseCLITool(ABC):
         timeout: int,
     ) -> str:
         """Execute the CLI tool command with error handling.
-        
+
         Args:
             combined_prompt: Combined variant and base prompt
             timeout: Command timeout in seconds
-            
+
         Returns:
             Command output stripped of whitespace
-            
+
         Raises:
             CLIToolError: If command execution fails
         """
@@ -173,7 +173,7 @@ class BaseCLITool(ABC):
 
 class CodexCLI(BaseCLITool):
     """OpenAI Codex CLI tool implementation.
-    
+
     Note: Command syntax needs verification with actual tool.
     Currently using placeholder implementation.
     """
@@ -181,7 +181,7 @@ class CodexCLI(BaseCLITool):
     @property
     def name(self) -> str:
         """Return the tool name.
-        
+
         Returns:
             Tool name "codex"
         """
@@ -190,7 +190,7 @@ class CodexCLI(BaseCLITool):
     @property
     def command(self) -> str:
         """Return the command name to check for availability.
-        
+
         Returns:
             Command name "codex"
         """
@@ -198,7 +198,7 @@ class CodexCLI(BaseCLITool):
 
     def _build_command_args(self) -> list[str]:
         """Build Codex-specific command arguments.
-        
+
         Returns:
             List of command arguments for Codex CLI
         """
@@ -211,7 +211,7 @@ class CopilotCLI(BaseCLITool):
     @property
     def name(self) -> str:
         """Return the tool name.
-        
+
         Returns:
             Tool name "copilot"
         """
@@ -220,7 +220,7 @@ class CopilotCLI(BaseCLITool):
     @property
     def command(self) -> str:
         """Return the command name to check for availability.
-        
+
         Returns:
             Command name "gh" (uses gh copilot)
         """
@@ -228,10 +228,10 @@ class CopilotCLI(BaseCLITool):
 
     def is_available(self) -> bool:
         """Check if GitHub CLI is available.
-        
+
         Returns:
             True if gh command is found in PATH
-            
+
         Note:
             TODO: Check if copilot extension is installed
         """
@@ -241,7 +241,7 @@ class CopilotCLI(BaseCLITool):
 
     def _build_command_args(self) -> list[str]:
         """Build Copilot-specific command arguments.
-        
+
         Returns:
             List of command arguments for GitHub Copilot CLI
         """
@@ -254,7 +254,7 @@ class ClaudeCLI(BaseCLITool):
     @property
     def name(self) -> str:
         """Return the tool name.
-        
+
         Returns:
             Tool name "claude"
         """
@@ -263,7 +263,7 @@ class ClaudeCLI(BaseCLITool):
     @property
     def command(self) -> str:
         """Return the command name to check for availability.
-        
+
         Returns:
             Command name "claude"
         """
@@ -271,7 +271,7 @@ class ClaudeCLI(BaseCLITool):
 
     def _build_command_args(self) -> list[str]:
         """Build Claude-specific command arguments.
-        
+
         Returns:
             List of command arguments for Claude CLI
         """
@@ -284,7 +284,7 @@ class GeminiCLI(BaseCLITool):
     @property
     def name(self) -> str:
         """Return the tool name.
-        
+
         Returns:
             Tool name "gemini"
         """
@@ -293,7 +293,7 @@ class GeminiCLI(BaseCLITool):
     @property
     def command(self) -> str:
         """Return the command name to check for availability.
-        
+
         Returns:
             Command name "gemini"
         """
@@ -301,7 +301,7 @@ class GeminiCLI(BaseCLITool):
 
     def _build_command_args(self) -> list[str]:
         """Build Gemini-specific command arguments.
-        
+
         Returns:
             List of command arguments for Gemini CLI
         """

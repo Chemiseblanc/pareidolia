@@ -3,8 +3,8 @@
 from pathlib import Path
 
 import pytest
-
 from conftest import create_template_loader
+
 from pareidolia.core.exceptions import VariantTemplateNotFoundError
 from pareidolia.templates.loader import TemplateLoader
 

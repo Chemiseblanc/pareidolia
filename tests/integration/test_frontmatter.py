@@ -3,9 +3,10 @@
 from pathlib import Path
 from typing import Any
 
+from conftest import create_template_loader
+
 from pareidolia.core.models import GenerateConfig
 from pareidolia.templates.composer import PromptComposer
-from conftest import create_template_loader
 
 
 class MetadataDict(dict):
