@@ -8,6 +8,7 @@ import pytest
 from pareidolia.core.exceptions import CLIToolError
 from pareidolia.generators.cli_tools import (
     AVAILABLE_TOOLS,
+    BaseCLITool,
     ClaudeCLI,
     CodexCLI,
     CopilotCLI,
@@ -327,3 +328,52 @@ class TestToolRegistry:
         available = get_available_tools()
         assert len(available) == 4
 
+
+
+class TestBaseCLITool:
+    """Tests for BaseCLITool abstract base class."""
+
+    def test_cannot_instantiate_directly(self) -> None:
+        """Test that BaseCLITool cannot be instantiated directly."""
+        with pytest.raises(TypeError):
+            BaseCLITool()  # type: ignore
+
+    def test_subclass_must_implement_abstract_methods(self) -> None:
+        """Test that subclass must implement all abstract methods."""
+
+        # Missing name
+        class MissingName(BaseCLITool):
+            @property
+            def command(self) -> str:
+                return "test"
+
+            def _build_command_args(self) -> list[str]:
+                return ["test"]
+
+        with pytest.raises(TypeError):
+            MissingName()  # type: ignore
+
+        # Missing command
+        class MissingCommand(BaseCLITool):
+            @property
+            def name(self) -> str:
+                return "test"
+
+            def _build_command_args(self) -> list[str]:
+                return ["test"]
+
+        with pytest.raises(TypeError):
+            MissingCommand()  # type: ignore
+
+        # Missing _build_command_args
+        class MissingBuildArgs(BaseCLITool):
+            @property
+            def name(self) -> str:
+                return "test"
+
+            @property
+            def command(self) -> str:
+                return "test"
+
+        with pytest.raises(TypeError):
+            MissingBuildArgs()  # type: ignore

@@ -2,20 +2,13 @@
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 from pareidolia.core.config import PareidoliaConfig
 from pareidolia.core.exceptions import ActionNotFoundError
 from pareidolia.core.models import PromptConfig
-from pareidolia.generators.cli_tools import (
-    CLITool,
-    get_available_tools,
-    get_tool_by_name,
-)
 from pareidolia.generators.naming import get_naming_convention
 from pareidolia.generators.prompt import PromptGenerator
-from pareidolia.generators.variant_cache import CachedVariant, VariantCache
 from pareidolia.generators.variants import VariantGenerator
 from pareidolia.templates.composer import PromptComposer
 from pareidolia.templates.engine import Jinja2Engine
@@ -184,12 +177,12 @@ class Generator:
     ) -> list[Path]:
         """Generate variants for a base prompt.
 
-        For each variant, first attempts to generate directly from an action template
-        (e.g., action/update-research.md.j2). If the action template doesn't exist,
-        falls back to AI-based transformation using variant templates.
+        For each variant, attempts to generate from a variant action template
+        (e.g., actions/update-research.md.j2). If the template doesn't exist,
+        generates it on-demand using VariantGenerator, then retries generation.
 
         Args:
-            base_prompt_path: Path to the generated base prompt file
+            base_prompt_path: Path to the generated base prompt file (unused)
             base_action_name: Name of the base action (e.g., "research")
             persona_name: Persona name used for generation
             example_names: Example names to include
@@ -206,10 +199,7 @@ class Generator:
             variant_action_name = f"{variant_name}-{base_action_name}"
 
             try:
-                # Try to load and generate from action template
-                self.loader.load_action(variant_action_name, persona_name)
-
-                # If it exists, generate it as a normal action
+                # Try to generate from action template
                 variant_path = self.generator.generate(
                     action_name=variant_action_name,
                     persona_name=persona_name,
@@ -224,52 +214,35 @@ class Generator:
                 )
 
             except ActionNotFoundError:
-                # Fall back to AI-based variant generation
+                # Template doesn't exist, generate it on-demand
                 try:
-                    # Read the generated base prompt file
-                    base_prompt = base_prompt_path.read_text()
-
-                    # Get CLI tool
-                    tool = self._get_cli_tool(prompt_config)
-
-                    # Generate single variant using AI
-                    variant_content = self.variant_generator.generate_single_variant(
-                        variant_name=variant_name,
-                        persona_name=persona_name,
-                        action_name=base_action_name,
-                        base_prompt=base_prompt,
-                        tool=tool,
-                        timeout=60,
-                        prompt_config=prompt_config,
-                    )
-
-                    # Generate the variant action name and use the naming convention
-                    # to create the proper filename (with library prefix if needed)
-                    variant_action_name = f"{variant_name}-{base_action_name}"
-                    variant_filename = self.naming.get_filename(
-                        action_name=variant_action_name,
-                        library=self.config.generate.library,
-                    )
-                    variant_path = output_dir / variant_filename
-                    variant_path.write_text(variant_content)
-                    variant_files.append(variant_path)
                     logger.info(
-                        f"Generated variant '{variant_name}' using AI transformation"
+                        f"Template for '{variant_action_name}' not found, "
+                        f"generating it on-demand"
                     )
 
-                    # Cache the AI-generated variant
-                    cached_variant = CachedVariant(
+                    # Generate the variant action template
+                    self.variant_generator.generate_single_variant(
                         variant_name=variant_name,
                         action_name=base_action_name,
                         persona_name=persona_name,
-                        content=variant_content,
-                        generated_at=datetime.now(),
+                        strategy="cli",
                         metadata=prompt_config.metadata,
                     )
-                    VariantCache().add(cached_variant)
+
+                    # Retry generation with newly created template
+                    variant_path = self.generator.generate(
+                        action_name=variant_action_name,
+                        persona_name=persona_name,
+                        output_dir=output_dir,
+                        library=self.config.generate.library,
+                        example_names=example_names,
+                        prompt_config=prompt_config,
+                    )
+                    variant_files.append(variant_path)
                     logger.info(
-                        f"Cached AI-generated variant '{variant_name}' "
-                        f"for action '{base_action_name}'"
+                        f"Generated variant '{variant_name}' from "
+                        f"on-demand template"
                     )
 
                 except Exception as e:
@@ -277,41 +250,6 @@ class Generator:
                     # Continue with other variants
 
         return variant_files
-
-    def _get_cli_tool(self, prompt_config: PromptConfig) -> CLITool:
-        """Get the CLI tool to use for AI-based variant generation.
-
-        Args:
-            prompt_config: The prompt configuration to check for cli_tool setting
-
-        Returns:
-            Selected CLI tool
-
-        Raises:
-            NoAvailableCLIToolError: If no CLI tools available
-        """
-        if prompt_config.cli_tool:
-            # Use specific tool
-            tool = get_tool_by_name(prompt_config.cli_tool)
-            if tool is None or not tool.is_available():
-                from pareidolia.core.exceptions import NoAvailableCLIToolError
-
-                raise NoAvailableCLIToolError(
-                    f"CLI tool not available: {prompt_config.cli_tool}"
-                )
-            return tool
-
-        # Auto-detect available tools
-        available = get_available_tools()
-        if not available:
-            from pareidolia.core.exceptions import NoAvailableCLIToolError
-
-            raise NoAvailableCLIToolError(
-                "No AI CLI tools available. Install one of: "
-                "codex, gh copilot, claude, gemini"
-            )
-
-        return available[0]
 
     def generate_action(
         self,

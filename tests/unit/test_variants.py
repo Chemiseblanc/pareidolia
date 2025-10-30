@@ -1,16 +1,21 @@
 """Tests for variant generation."""
 
-from unittest.mock import Mock, patch
+from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
 from pareidolia.core.exceptions import (
+    ActionNotFoundError,
     CLIToolError,
     NoAvailableCLIToolError,
     VariantTemplateNotFoundError,
 )
-from pareidolia.core.models import PromptConfig
-from pareidolia.generators.variants import VariantGenerator
+from pareidolia.core.models import GenerateConfig
+from pareidolia.generators.variants import (
+    MAX_TEMPLATE_GENERATION_RETRIES,
+    VariantGenerator,
+)
 from pareidolia.templates.composer import PromptComposer
 from pareidolia.templates.engine import Jinja2Engine
 from pareidolia.templates.loader import TemplateLoader
@@ -31,20 +36,31 @@ def mock_composer() -> Mock:
 
 
 @pytest.fixture
-def variant_generator(mock_loader: Mock, mock_composer: Mock) -> VariantGenerator:
-    """Create a variant generator instance."""
-    return VariantGenerator(loader=mock_loader, composer=mock_composer)
+def generate_config() -> GenerateConfig:
+    """Create a generate configuration."""
+    return GenerateConfig(
+        tool="copilot",
+        library="mylib",
+        output_dir=Path("/tmp/output"),
+    )
 
 
 @pytest.fixture
-def prompt_config() -> PromptConfig:
-    """Create a prompt configuration."""
-    return PromptConfig(
-        persona="researcher",
-        action="research",
-        variants=["update", "refine"],
-        cli_tool=None,
+def variant_generator(
+    mock_loader: Mock, mock_composer: Mock, generate_config: GenerateConfig
+) -> VariantGenerator:
+    """Create a variant generator instance."""
+    return VariantGenerator(
+        loader=mock_loader, composer=mock_composer, generate_config=generate_config
     )
+
+
+@pytest.fixture
+def temp_actions_dir(tmp_path: Path) -> Path:
+    """Create a temporary actions directory."""
+    actions_dir = tmp_path / "actions"
+    actions_dir.mkdir()
+    return actions_dir
 
 
 @pytest.fixture
@@ -61,13 +77,27 @@ class TestVariantGeneratorInitialization:
     """Tests for VariantGenerator initialization."""
 
     def test_initialization_with_loader_and_composer(
-        self, mock_loader: Mock, mock_composer: Mock
+        self, mock_loader: Mock, mock_composer: Mock, generate_config: GenerateConfig
     ) -> None:
         """Test that generator initializes with required dependencies."""
+        generator = VariantGenerator(
+            loader=mock_loader, composer=mock_composer, generate_config=generate_config
+        )
+
+        assert generator.loader is mock_loader
+        assert generator.composer is mock_composer
+        assert generator.generate_config is generate_config
+        assert isinstance(generator.engine, Jinja2Engine)
+
+    def test_initialization_without_generate_config(
+        self, mock_loader: Mock, mock_composer: Mock
+    ) -> None:
+        """Test that generator initializes without generate_config."""
         generator = VariantGenerator(loader=mock_loader, composer=mock_composer)
 
         assert generator.loader is mock_loader
         assert generator.composer is mock_composer
+        assert generator.generate_config is None
         assert isinstance(generator.engine, Jinja2Engine)
 
 
@@ -178,77 +208,131 @@ class TestSelectTool:
         mock_logger.info.assert_called_once_with("Using CLI tool: test-tool")
 
 
-class TestGenerateSingleVariant:
-    """Tests for single variant generation."""
+class TestGenerateSingleVariantCLI:
+    """Tests for single variant template generation using CLI strategy."""
 
-    def test_generate_single_variant_success(
+    def test_generate_single_variant_cli_success(
         self,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
         mock_cli_tool: Mock,
+        temp_actions_dir: Path,
     ) -> None:
-        """Test successful generation of a single variant."""
+        """Test successful generation of a variant template using CLI."""
+        # Mock action template loading
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nResearch this topic.\n{{ tool }}"
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
+
+        # Mock variant instruction template
         mock_loader.load_variant_template.return_value = (
-            "Transform the prompt: {{ variant_name }}"
-        )
-        mock_cli_tool.generate_variant.return_value = "Generated content"
-
-        result = variant_generator.generate_single_variant(
-            variant_name="update",
-            persona_name="researcher",
-            action_name="research",
-            base_prompt="Base prompt content",
-            tool=mock_cli_tool,
-            timeout=60,
+            "Transform to {{ variant_name }} variant for {{ action_name }}"
         )
 
-        assert result == "Generated content"
+        # Mock CLI tool response with valid template
+        generated_template = (
+            "{{ persona }}\n\nUpdate this research.\n{{ tool }}\n{{ library }}"
+        )
+        mock_cli_tool.generate_variant.return_value = generated_template
+
+        with patch(
+            "pareidolia.generators.variants.get_available_tools",
+            return_value=[mock_cli_tool],
+        ):
+            result = variant_generator.generate_single_variant(
+                variant_name="update",
+                action_name="research",
+                persona_name="test_persona",
+                strategy="cli",
+            )
+
+        # Verify template file was created
+        assert result.exists()
+        assert result.name == "update-research.md.j2"
+        assert result.read_text() == generated_template
+
+        # Verify action was loaded with test persona
+        mock_loader.load_action.assert_called_once_with("research", "test_persona")
+
+        # Verify variant instructions were loaded and rendered
         mock_loader.load_variant_template.assert_called_once_with("update")
+
+        # Verify CLI tool was called
         mock_cli_tool.generate_variant.assert_called_once()
 
-        # Verify the call arguments
-        call_args = mock_cli_tool.generate_variant.call_args
-        assert call_args[1]["base_prompt"] == "Base prompt content"
-        assert call_args[1]["timeout"] == 60
-        assert "Transform the prompt: update" in call_args[1]["variant_prompt"]
-
-    def test_generate_single_variant_renders_template_with_context(
+    def test_generate_single_variant_renders_variant_instructions(
         self,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
         mock_cli_tool: Mock,
+        temp_actions_dir: Path,
     ) -> None:
-        """Test that variant template is rendered with correct context."""
-        template = (
-            "Persona: {{ persona_name }}, Action: {{ action_name }}, "
-            "Variant: {{ variant_name }}"
-        )
-        mock_loader.load_variant_template.return_value = template
-        mock_cli_tool.generate_variant.return_value = "Generated content"
+        """Test that variant instructions are rendered with correct context."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
 
-        variant_generator.generate_single_variant(
-            variant_name="refine",
-            persona_name="developer",
-            action_name="code",
-            base_prompt="Base prompt",
-            tool=mock_cli_tool,
-            timeout=60,
+        # Variant instructions with placeholders
+        variant_instructions = (
+            "Action: {{ action_name }}, Variant: {{ variant_name }}, "
+            "Tool: {{ tool }}, Library: {{ library }}"
+        )
+        mock_loader.load_variant_template.return_value = variant_instructions
+
+        # Valid generated template
+        mock_cli_tool.generate_variant.return_value = (
+            "{{ persona }}\n\nRefined action.\n{{ tool }}"
         )
 
-        # Check that the rendered template contains the context
+        with patch(
+            "pareidolia.generators.variants.get_available_tools",
+            return_value=[mock_cli_tool],
+        ):
+            variant_generator.generate_single_variant(
+                variant_name="refine",
+                action_name="code",
+                persona_name="test_persona",
+                strategy="cli",
+            )
+
+        # Check that the variant instructions were rendered with correct context
         call_args = mock_cli_tool.generate_variant.call_args
         variant_prompt = call_args[1]["variant_prompt"]
-        assert "Persona: developer" in variant_prompt
         assert "Action: code" in variant_prompt
         assert "Variant: refine" in variant_prompt
+        assert "Tool: copilot" in variant_prompt
+        assert "Library: mylib" in variant_prompt
 
-    def test_generate_single_variant_template_not_found(
+    def test_generate_single_variant_action_not_found(
         self,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
-        mock_cli_tool: Mock,
     ) -> None:
-        """Test handling when variant template is not found."""
+        """Test handling when action template is not found."""
+        mock_loader.load_action.side_effect = ActionNotFoundError(
+            "Action not found: missing"
+        )
+
+        with pytest.raises(ActionNotFoundError):
+            variant_generator.generate_single_variant(
+                variant_name="update",
+                action_name="missing",
+                persona_name="test_persona",
+                strategy="cli",
+            )
+
+    def test_generate_single_variant_variant_template_not_found(
+        self,
+        variant_generator: VariantGenerator,
+        mock_loader: Mock,
+    ) -> None:
+        """Test handling when variant instruction template is not found."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+
         mock_loader.load_variant_template.side_effect = VariantTemplateNotFoundError(
             "Template not found"
         )
@@ -256,262 +340,331 @@ class TestGenerateSingleVariant:
         with pytest.raises(VariantTemplateNotFoundError):
             variant_generator.generate_single_variant(
                 variant_name="missing",
-                persona_name="researcher",
                 action_name="research",
-                base_prompt="Base prompt",
-                tool=mock_cli_tool,
-                timeout=60,
+                persona_name="test_persona",
+                strategy="cli",
             )
 
-    def test_generate_single_variant_cli_tool_error(
+    def test_generate_single_variant_cli_tool_error_after_retries(
         self,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
         mock_cli_tool: Mock,
+        temp_actions_dir: Path,
     ) -> None:
-        """Test handling when CLI tool fails."""
-        mock_loader.load_variant_template.return_value = "Template content"
+        """Test handling when CLI tool fails after all retries."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
+        mock_loader.load_variant_template.return_value = "Transform to update"
+
         mock_cli_tool.generate_variant.side_effect = CLIToolError("Tool failed")
 
-        with pytest.raises(CLIToolError):
+        with patch(
+            "pareidolia.generators.variants.get_available_tools",
+            return_value=[mock_cli_tool],
+        ), pytest.raises(CLIToolError, match="Tool failed"):
             variant_generator.generate_single_variant(
                 variant_name="update",
-                persona_name="researcher",
                 action_name="research",
-                base_prompt="Base prompt",
-                tool=mock_cli_tool,
-                timeout=60,
+                persona_name="test_persona",
+                strategy="cli",
             )
 
+        # Verify retries happened
+        assert (
+            mock_cli_tool.generate_variant.call_count
+            == MAX_TEMPLATE_GENERATION_RETRIES
+        )
 
-class TestGenerateVariants:
-    """Tests for batch variant generation."""
 
-    @patch("pareidolia.generators.variants.get_available_tools")
-    @patch("pareidolia.generators.variants.logger")
-    def test_generate_variants_success(
+    def test_generate_single_variant_validation_missing_placeholder(
         self,
-        mock_logger: Mock,
-        mock_get_available: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
-        prompt_config: PromptConfig,
         mock_cli_tool: Mock,
+        temp_actions_dir: Path,
     ) -> None:
-        """Test successful generation of multiple variants."""
-        mock_get_available.return_value = [mock_cli_tool]
-        mock_loader.load_variant_template.return_value = "Template: {{ variant_name }}"
+        """Test that invalid templates are retried."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
+        mock_loader.load_variant_template.return_value = "Transform to update"
+
+        # First attempts return invalid templates (missing {{ persona }})
+        # Final attempt returns valid template
         mock_cli_tool.generate_variant.side_effect = [
-            "Updated content",
-            "Refined content",
+            "Invalid template without placeholder",
+            "Still invalid",
+            "{{ persona }}\n\nValid template\n{{ tool }}",
         ]
 
-        result = variant_generator.generate_variants(
-            prompt_config=prompt_config,
-            base_prompt="Base prompt content",
-            timeout=60,
-        )
+        with patch(
+            "pareidolia.generators.variants.get_available_tools",
+            return_value=[mock_cli_tool],
+        ):
+            result = variant_generator.generate_single_variant(
+                variant_name="update",
+                action_name="research",
+                persona_name="test_persona",
+                strategy="cli",
+            )
 
-        assert result == {
-            "update": "Updated content",
-            "refine": "Refined content",
-        }
-        assert mock_loader.load_variant_template.call_count == 2
-        assert mock_cli_tool.generate_variant.call_count == 2
+        # Should succeed on third attempt
+        assert result.exists()
+        assert "{{ persona }}" in result.read_text()
+        assert mock_cli_tool.generate_variant.call_count == 3
 
-    @patch("pareidolia.generators.variants.get_tool_by_name")
-    def test_generate_variants_with_specific_tool(
+    def test_generate_single_variant_validation_fails_all_retries(
         self,
-        mock_get_tool: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
         mock_cli_tool: Mock,
+        temp_actions_dir: Path,
     ) -> None:
-        """Test generating variants with a specific CLI tool."""
-        config = PromptConfig(
-            persona="researcher",
-            action="research",
-            variants=["update"],
-            cli_tool="claude",
+        """Test that generation fails after all retry attempts."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
+        mock_loader.load_variant_template.return_value = "Transform to update"
+
+        # All attempts return invalid templates
+        mock_cli_tool.generate_variant.return_value = "Invalid template"
+
+        with patch(
+            "pareidolia.generators.variants.get_available_tools",
+            return_value=[mock_cli_tool],
+        ), pytest.raises(CLIToolError, match="Failed to generate valid template"):
+            variant_generator.generate_single_variant(
+                variant_name="update",
+                action_name="research",
+                persona_name="test_persona",
+                strategy="cli",
+                )
+
+        assert (
+            mock_cli_tool.generate_variant.call_count
+            == MAX_TEMPLATE_GENERATION_RETRIES
         )
-        mock_get_tool.return_value = mock_cli_tool
-        mock_cli_tool.is_available.return_value = True
-        mock_loader.load_variant_template.return_value = "Template content"
-        mock_cli_tool.generate_variant.return_value = "Generated content"
 
-        result = variant_generator.generate_variants(
-            prompt_config=config,
-            base_prompt="Base prompt",
-            timeout=60,
-        )
-
-        assert result == {"update": "Generated content"}
-        mock_get_tool.assert_called_once_with("claude")
-
-    @patch("pareidolia.generators.variants.get_available_tools")
-    @patch("pareidolia.generators.variants.logger")
-    def test_generate_variants_skips_missing_template(
+    def test_generate_single_variant_template_written_to_correct_location(
         self,
-        mock_logger: Mock,
-        mock_get_available: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
         mock_cli_tool: Mock,
+        tmp_path: Path,
     ) -> None:
-        """Test that missing templates are skipped with warning."""
-        config = PromptConfig(
-            persona="researcher",
-            action="research",
-            variants=["update", "missing", "refine"],
-            cli_tool=None,
-        )
-        mock_get_available.return_value = [mock_cli_tool]
+        """Test that template is written to actions/{variant}-{action}.md.j2."""
+        # Setup: loader.root points to project root
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        actions_dir = project_root / "actions"
+        actions_dir.mkdir()
 
-        # Second call raises exception (missing template)
-        mock_loader.load_variant_template.side_effect = [
-            "Template 1",
-            VariantTemplateNotFoundError("Template not found"),
-            "Template 3",
-        ]
-        mock_cli_tool.generate_variant.side_effect = [
-            "Updated content",
-            "Refined content",
-        ]
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = project_root  # root is project root
+        mock_loader.load_variant_template.return_value = "Transform to refine"
 
-        result = variant_generator.generate_variants(
-            prompt_config=config,
-            base_prompt="Base prompt",
-            timeout=60,
-        )
+        generated_template = "{{ persona }}\n\nRefined action."
+        mock_cli_tool.generate_variant.return_value = generated_template
 
-        # Only two variants should be generated (missing one skipped)
-        assert len(result) == 2
-        assert "update" in result
-        assert "refine" in result
-        assert "missing" not in result
+        with patch(
+            "pareidolia.generators.variants.get_available_tools",
+            return_value=[mock_cli_tool],
+        ):
+            result = variant_generator.generate_single_variant(
+                variant_name="refine",
+                action_name="code",
+                persona_name="test_persona",
+                strategy="cli",
+            )
 
-        # Verify warning was logged
-        mock_logger.warning.assert_called_once()
-        warning_call = mock_logger.warning.call_args[0][0]
-        assert "Skipping variant missing" in warning_call
+        expected_path = actions_dir / "refine-code.md.j2"
+        assert result == expected_path
+        assert expected_path.exists()
+        assert expected_path.read_text() == generated_template
 
-    @patch("pareidolia.generators.variants.get_available_tools")
-    @patch("pareidolia.generators.variants.logger")
-    def test_generate_variants_continues_on_error(
+    def test_generate_single_variant_preserves_jinja2_placeholders(
         self,
-        mock_logger: Mock,
-        mock_get_available: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
         mock_cli_tool: Mock,
+        temp_actions_dir: Path,
     ) -> None:
-        """Test that generation continues when a variant fails."""
-        config = PromptConfig(
-            persona="researcher",
-            action="research",
-            variants=["update", "failing", "refine"],
-            cli_tool=None,
+        """Test that generated templates preserve Jinja2 placeholders."""
+        action_mock = Mock()
+        action_mock.template = (
+            "{{ persona }}\n\nResearch with {{ tool }} and {{ library }}"
         )
-        mock_get_available.return_value = [mock_cli_tool]
-        mock_loader.load_variant_template.return_value = "Template content"
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
+        mock_loader.load_variant_template.return_value = "Transform to update"
 
-        # Second call raises CLI error
-        mock_cli_tool.generate_variant.side_effect = [
-            "Updated content",
-            CLIToolError("Tool failed"),
-            "Refined content",
-        ]
-
-        result = variant_generator.generate_variants(
-            prompt_config=config,
-            base_prompt="Base prompt",
-            timeout=60,
+        # Generated template should preserve all placeholders
+        generated_template = (
+            "{{ persona }}\n\nUpdate research using {{ tool }} and {{ library }}"
         )
+        mock_cli_tool.generate_variant.return_value = generated_template
 
-        # Two variants should be generated (failing one skipped)
-        assert len(result) == 2
-        assert "update" in result
-        assert "refine" in result
-        assert "failing" not in result
+        with patch(
+            "pareidolia.generators.variants.get_available_tools",
+            return_value=[mock_cli_tool],
+        ):
+            result = variant_generator.generate_single_variant(
+                variant_name="update",
+                action_name="research",
+                persona_name="test_persona",
+                strategy="cli",
+            )
 
-        # Verify error was logged
-        mock_logger.error.assert_called_once()
-        error_call = mock_logger.error.call_args[0][0]
-        assert "Failed to generate variant failing" in error_call
+        content = result.read_text()
+        assert "{{ persona }}" in content
+        assert "{{ tool }}" in content
+        assert "{{ library }}" in content
 
-    @patch("pareidolia.generators.variants.get_available_tools")
-    @patch("pareidolia.generators.variants.logger")
-    def test_generate_variants_logs_success(
+
+class TestGenerateSingleVariantMCP:
+    """Tests for single variant template generation using MCP strategy."""
+
+    def test_generate_single_variant_mcp_success(
         self,
-        mock_logger: Mock,
-        mock_get_available: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
-        prompt_config: PromptConfig,
-        mock_cli_tool: Mock,
+        temp_actions_dir: Path,
     ) -> None:
-        """Test that successful variant generation is logged."""
-        mock_get_available.return_value = [mock_cli_tool]
-        mock_loader.load_variant_template.return_value = "Template content"
-        mock_cli_tool.generate_variant.return_value = "Generated content"
+        """Test successful generation using MCP strategy."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
+        mock_loader.load_variant_template.return_value = "Transform to update"
 
-        variant_generator.generate_variants(
-            prompt_config=prompt_config,
-            base_prompt="Base prompt",
-            timeout=60,
+        # Mock MCP context with async sample method
+        mock_ctx = Mock()
+        mock_response = Mock()
+        mock_response.text = "{{ persona }}\n\nUpdated action via MCP."
+
+        # Create an async mock for sample
+        async_sample = AsyncMock(return_value=mock_response)
+        mock_ctx.sample = async_sample
+
+        result = variant_generator.generate_single_variant(
+            variant_name="update",
+            action_name="research",
+            persona_name="test_persona",
+            strategy="mcp",
+            ctx=mock_ctx,
         )
 
-        # Should log for each successful variant
-        assert mock_logger.info.call_count >= 2
-        info_calls = [call[0][0] for call in mock_logger.info.call_args_list]
-        assert any("Generated variant: update" in call for call in info_calls)
-        assert any("Generated variant: refine" in call for call in info_calls)
+        # Verify template was created
+        assert result.exists()
+        assert result.name == "update-research.md.j2"
+        assert "{{ persona }}" in result.read_text()
 
-    @patch("pareidolia.generators.variants.get_available_tools")
-    def test_generate_variants_empty_list(
+        # Verify sample was called
+        async_sample.assert_called_once()
+
+    def test_generate_single_variant_mcp_requires_ctx(
         self,
-        mock_get_available: Mock,
-        variant_generator: VariantGenerator,
-        mock_cli_tool: Mock,
-    ) -> None:
-        """Test generating with empty variant list returns empty dict."""
-        # This shouldn't happen due to PromptConfig validation, but test anyway
-        config = PromptConfig.__new__(PromptConfig)
-        object.__setattr__(config, "persona", "researcher")
-        object.__setattr__(config, "action", "research")
-        object.__setattr__(config, "variants", [])
-        object.__setattr__(config, "cli_tool", None)
-
-        mock_get_available.return_value = [mock_cli_tool]
-
-        result = variant_generator.generate_variants(
-            prompt_config=config,
-            base_prompt="Base prompt",
-            timeout=60,
-        )
-
-        assert result == {}
-
-    @patch("pareidolia.generators.variants.get_available_tools")
-    def test_generate_variants_custom_timeout(
-        self,
-        mock_get_available: Mock,
         variant_generator: VariantGenerator,
         mock_loader: Mock,
-        prompt_config: PromptConfig,
-        mock_cli_tool: Mock,
     ) -> None:
-        """Test that custom timeout is passed to CLI tool."""
-        mock_get_available.return_value = [mock_cli_tool]
-        mock_loader.load_variant_template.return_value = "Template content"
-        mock_cli_tool.generate_variant.return_value = "Generated content"
+        """Test that MCP strategy requires ctx parameter."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.load_variant_template.return_value = "Transform to update"
 
-        variant_generator.generate_variants(
-            prompt_config=prompt_config,
-            base_prompt="Base prompt",
-            timeout=120,
+        with pytest.raises(ValueError, match="ctx parameter required"):
+            variant_generator.generate_single_variant(
+                variant_name="update",
+                action_name="research",
+                persona_name="test_persona",
+                strategy="mcp",
+                ctx=None,
+            )
+
+    def test_generate_single_variant_mcp_validation_and_retry(
+        self,
+        variant_generator: VariantGenerator,
+        mock_loader: Mock,
+        temp_actions_dir: Path,
+    ) -> None:
+        """Test that MCP strategy also validates and retries."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
+        mock_loader.load_variant_template.return_value = "Transform to update"
+
+        # Mock MCP context
+        mock_ctx = Mock()
+
+        # First response invalid, second valid
+        response1 = Mock()
+        response1.text = "Invalid template without placeholder"
+        response2 = Mock()
+        response2.text = "{{ persona }}\n\nValid template."
+
+        async_sample = AsyncMock(side_effect=[response1, response2])
+        mock_ctx.sample = async_sample
+
+        result = variant_generator.generate_single_variant(
+            variant_name="update",
+            action_name="research",
+            persona_name="test_persona",
+            strategy="mcp",
+            ctx=mock_ctx,
         )
 
-        # Check that timeout is passed correctly
-        for call in mock_cli_tool.generate_variant.call_args_list:
-            assert call[1]["timeout"] == 120
+        # Should succeed on second attempt
+        assert result.exists()
+        assert "{{ persona }}" in result.read_text()
+        assert async_sample.call_count == 2
+
+
+class TestMaxTemplateGenerationRetries:
+    """Tests for MAX_TEMPLATE_GENERATION_RETRIES constant usage."""
+
+    def test_max_retries_constant_is_defined(self) -> None:
+        """Test that MAX_TEMPLATE_GENERATION_RETRIES constant is defined."""
+        assert MAX_TEMPLATE_GENERATION_RETRIES == 3
+
+    def test_retries_respect_max_constant(
+        self,
+        variant_generator: VariantGenerator,
+        mock_loader: Mock,
+        mock_cli_tool: Mock,
+        temp_actions_dir: Path,
+    ) -> None:
+        """Test that retries do not exceed MAX_TEMPLATE_GENERATION_RETRIES."""
+        action_mock = Mock()
+        action_mock.template = "{{ persona }}\n\nBase action."
+        mock_loader.load_action.return_value = action_mock
+        mock_loader.root = temp_actions_dir
+        mock_loader.load_variant_template.return_value = "Transform"
+
+        # Always return invalid template
+        mock_cli_tool.generate_variant.return_value = "Invalid"
+
+        with patch(
+            "pareidolia.generators.variants.get_available_tools",
+            return_value=[mock_cli_tool],
+        ), pytest.raises(CLIToolError):
+            variant_generator.generate_single_variant(
+                variant_name="update",
+                action_name="research",
+                persona_name="test_persona",
+                strategy="cli",
+            )
+
+        # Should be called exactly MAX_TEMPLATE_GENERATION_RETRIES times
+        assert (
+            mock_cli_tool.generate_variant.call_count
+            == MAX_TEMPLATE_GENERATION_RETRIES
+        )

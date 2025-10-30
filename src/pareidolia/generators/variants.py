@@ -1,13 +1,15 @@
 """Variant generation orchestration."""
 
 import logging
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal
 
 from pareidolia.core.exceptions import (
+    ActionNotFoundError,
+    CLIToolError,
     NoAvailableCLIToolError,
-    VariantTemplateNotFoundError,
 )
-from pareidolia.core.models import GenerateConfig, PromptConfig
+from pareidolia.core.models import GenerateConfig
 from pareidolia.generators.cli_tools import (
     CLITool,
     get_available_tools,
@@ -18,6 +20,8 @@ from pareidolia.templates.engine import Jinja2Engine
 from pareidolia.templates.loader import TemplateLoader
 
 logger = logging.getLogger(__name__)
+
+MAX_TEMPLATE_GENERATION_RETRIES = 3
 
 
 class VariantGenerator:
@@ -48,54 +52,10 @@ class VariantGenerator:
         self.engine = Jinja2Engine()
         self.generate_config = generate_config
 
-    def generate_variants(
-        self,
-        prompt_config: PromptConfig,
-        base_prompt: str,
-        timeout: int = 60,
-    ) -> dict[str, str]:
-        """Generate all configured variants.
-
-        Args:
-            prompt_config: Prompt variant configuration
-            base_prompt: Base prompt content to transform
-            timeout: CLI tool timeout in seconds
-
-        Returns:
-            Dictionary mapping variant names to generated content
-
-        Raises:
-            NoAvailableCLIToolError: If no CLI tools available
-            VariantTemplateNotFoundError: If variant template missing
-        """
-        # Determine which tool to use
-        tool = self._select_tool(prompt_config.cli_tool)
-
-        variants: dict[str, str] = {}
-
-        # Generate each variant
-        for variant_name in prompt_config.variants:
-            try:
-                variant_content = self.generate_single_variant(
-                    variant_name=variant_name,
-                    persona_name=prompt_config.persona,
-                    action_name=prompt_config.action,
-                    base_prompt=base_prompt,
-                    tool=tool,
-                    timeout=timeout,
-                    prompt_config=prompt_config,
-                )
-                variants[variant_name] = variant_content
-                logger.info(f"Generated variant: {variant_name}")
-            except VariantTemplateNotFoundError as e:
-                logger.warning(f"Skipping variant {variant_name}: {e}")
-            except Exception as e:
-                logger.error(
-                    f"Failed to generate variant {variant_name}: {e}"
-                )
-                # Continue with other variants
-
-        return variants
+    # NOTE: generate_variants method removed - incompatible with new
+    # template-based approach. Variants are now generated as action templates,
+    # not final prompts. Callers should use generate_single_variant directly
+    # or be updated accordingly.
 
     def _select_tool(self, requested_tool: str | None) -> CLITool:
         """Select CLI tool to use.
@@ -137,37 +97,50 @@ class VariantGenerator:
     def generate_single_variant(
         self,
         variant_name: str,
-        persona_name: str,
         action_name: str,
-        base_prompt: str,
-        tool: CLITool,
-        timeout: int,
-        prompt_config: PromptConfig | None = None,
-    ) -> str:
-        """Generate a single variant using AI transformation.
+        persona_name: str,
+        strategy: Literal["cli", "mcp"] = "cli",
+        ctx: Any | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> Path:
+        """Generate a single variant action template using AI transformation.
+
+        This method generates a variant action template (Jinja2 .md.j2 file) instead
+        of a final prompt. The generated template preserves placeholders like
+        {{ persona }}, {{ tool }}, {{ library }} from the base action template.
 
         Args:
-            variant_name: Name of the variant
-            persona_name: Persona name for context
-            action_name: Action name for context
-            base_prompt: Base prompt to transform
-            tool: CLI tool to use
-            timeout: Timeout in seconds
-            prompt_config: Optional prompt configuration for metadata access
+            variant_name: Name of the variant (e.g., "refine", "summarize")
+            action_name: Name of the action to create variant for (e.g., "research")
+            persona_name: Name of the persona (for loading base template)
+            strategy: Generation strategy - "cli" for subprocess or "mcp" for sampling
+            ctx: Context object for MCP sampling (required if strategy="mcp")
+            metadata: Optional metadata dict to include in variant instruction rendering
 
         Returns:
-            Generated variant content
+            Path to the created variant action template file
 
         Raises:
-            VariantTemplateNotFoundError: If template not found
-            CLIToolError: If generation fails
+            ActionNotFoundError: If base action template not found
+            VariantTemplateNotFoundError: If variant instruction template not found
+            CLIToolError: If AI generation fails after retries
+            NoAvailableCLIToolError: If no CLI tools available (strategy="cli")
+            ValueError: If strategy="mcp" but ctx is None
         """
-        # Load and render variant template
-        template_content = self.loader.load_variant_template(variant_name)
+        # Load base action TEMPLATE (not rendered with persona)
+        try:
+            # Load action template
+            action = self.loader.load_action(action_name, persona_name)
+            base_template_content = action.template
+        except ActionNotFoundError:
+            raise
 
-        # Build context with all available information
+        # Load variant instruction template
+        variant_instructions = self.loader.load_variant_template(variant_name)
+
+        # Render variant instructions with context
         context: dict[str, Any] = {
-            "persona_name": persona_name,
+            "persona_name": "placeholder",  # Not used in output template
             "action_name": action_name,
             "variant_name": variant_name,
         }
@@ -180,18 +153,108 @@ class VariantGenerator:
             context["tool"] = "standard"
             context["library"] = None
 
-        # Add metadata from prompt_config if available
-        if prompt_config is not None:
-            context["metadata"] = prompt_config.metadata
-        else:
-            context["metadata"] = {}
+        # Add metadata for rendering
+        context["metadata"] = metadata if metadata is not None else {}
 
-        # Render template with context
-        variant_prompt = self.engine.render(template_content, context)
-
-        # Generate variant using CLI tool
-        return tool.generate_variant(
-            variant_prompt=variant_prompt,
-            base_prompt=base_prompt,
-            timeout=timeout,
+        # Render variant instructions
+        rendered_variant_instructions = self.engine.render(
+            variant_instructions, context
         )
+
+        # Build prompt for AI to generate template
+        base_instruction = (
+            "You must generate a Jinja2 template file. "
+            "Preserve ALL Jinja2 placeholders like {{ persona }}, {{ tool }}, "
+            "{{ library }} exactly as they appear in the base template."
+        )
+
+        ai_prompt = (
+            f"{base_instruction}\n\n"
+            f"{rendered_variant_instructions}\n\n"
+            f"Base template:\n{base_template_content}"
+        )
+
+        # Generate template with retries
+        generated_template: str | None = None
+        for attempt in range(MAX_TEMPLATE_GENERATION_RETRIES):
+            if attempt > 0:
+                # Add retry instruction
+                retry_instruction = (
+                    "Template validation failed, ensure all Jinja2 placeholders "
+                    "like {{ persona }}, {{ tool }}, {{ library }} are preserved "
+                    "exactly as they appear."
+                )
+                current_prompt = f"{retry_instruction}\n\n{ai_prompt}"
+            else:
+                current_prompt = ai_prompt
+
+            # Call AI based on strategy
+            try:
+                if strategy == "cli":
+                    tool = self._select_tool(None)  # Auto-select tool
+                    generated_template = tool.generate_variant(
+                        variant_prompt=current_prompt,
+                        base_prompt="",
+                        timeout=60,
+                    )
+                elif strategy == "mcp":
+                    if ctx is None:
+                        raise ValueError(
+                            "ctx parameter required for mcp strategy"
+                        )
+                    # Import here to avoid dependency when not using MCP
+                    # ctx.sample() is async but we're in sync context
+                    # This will need to be called from an async context
+                    import asyncio
+
+                    # Get or create event loop
+                    try:
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+
+                    # Call async sample method
+                    response = loop.run_until_complete(
+                        ctx.sample(current_prompt)
+                    )
+                    # SamplingResponse has .text attribute
+                    generated_template = response.text
+                else:
+                    raise ValueError(f"Unknown strategy: {strategy}")
+
+            except (CLIToolError, NoAvailableCLIToolError) as e:
+                if attempt == MAX_TEMPLATE_GENERATION_RETRIES - 1:
+                    raise
+                logger.warning(
+                    f"AI generation attempt {attempt + 1} failed: {e}"
+                )
+                continue
+
+            # Validate generated template
+            if generated_template and "{{ persona }}" in generated_template:
+                break
+            else:
+                logger.warning(
+                    f"Generated template missing {{ persona }} placeholder "
+                    f"(attempt {attempt + 1})"
+                )
+                generated_template = None
+
+        if generated_template is None:
+            raise CLIToolError(
+                f"Failed to generate valid template for {variant_name}-{action_name} "
+                f"after {MAX_TEMPLATE_GENERATION_RETRIES} attempts"
+            )
+
+        # Write template to actions/{variant}-{action}.md.j2
+        actions_dir = self.loader.root / "actions"
+        actions_dir.mkdir(parents=True, exist_ok=True)
+
+        template_filename = f"{variant_name}-{action_name}.md.j2"
+        template_path = actions_dir / template_filename
+
+        template_path.write_text(generated_template)
+        logger.info(f"Created variant template: {template_path}")
+
+        return template_path

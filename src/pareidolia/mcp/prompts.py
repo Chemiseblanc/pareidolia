@@ -1,15 +1,13 @@
 """MCP prompt definitions for Pareidolia prompts."""
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from fastmcp import Context, FastMCP
 
 from pareidolia.core.config import PareidoliaConfig
+from pareidolia.core.exceptions import ActionNotFoundError
 from pareidolia.generators.generator import Generator
-from pareidolia.generators.variant_cache import CachedVariant, VariantCache
-from pareidolia.templates.engine import Jinja2Engine
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +188,11 @@ def _register_variant_prompt(
     metadata: dict[str, Any],
     variant: str,
 ) -> None:
-    """Register a variant prompt with sampling and caching.
+    """Register a variant prompt using template-first architecture.
+
+    First attempts to compose the variant prompt from an existing template.
+    If the template doesn't exist, generates it on-the-fly using AI sampling,
+    then composes from the newly created template.
 
     Args:
         mcp: FastMCP server instance
@@ -205,33 +207,17 @@ def _register_variant_prompt(
     """
 
     async def variant_prompt(ctx: Context) -> str:
-        """Generate variant prompt with AI sampling.
+        """Generate variant prompt from template or create template on-the-fly.
 
         Args:
-            ctx: FastMCP context for sampling
+            ctx: FastMCP context for template generation if needed
 
         Returns:
-            Generated variant prompt content
+            Composed variant prompt content
         """
-        # Check cache first
-        cache = VariantCache()
-        cached_variants = cache.get_by_action(action)
-
-        for cached in cached_variants:
-            if (
-                cached.variant_name == variant
-                and cached.persona_name == persona
-                and cached.metadata == metadata
-            ):
-                logger.info(f"Using cached variant: {name}")
-                return cached.content
-
-        # Cache miss - generate using AI sampling
-        logger.info(f"Generating variant: {name}")
-
-        # First, generate the base prompt
         from pareidolia.core.models import PromptConfig
 
+        # Create prompt config for composition
         prompt_config = PromptConfig(
             persona=persona,
             action=action,
@@ -239,61 +225,60 @@ def _register_variant_prompt(
             metadata=metadata,
         )
 
-        base_prompt = generator.composer.compose(
-            action_name=action,
-            persona_name=persona,
-            example_names=examples,
-            prompt_config=prompt_config,
-        )
-
-        # Load variant template
+        # Try to compose variant prompt from existing template
+        variant_action = f"{variant}-{action}"
         try:
-            variant_template_content = generator.loader.load_variant_template(variant)
-        except Exception as e:
-            logger.error(f"Failed to load variant template {variant}: {e}")
-            raise RuntimeError(f"Variant template not found: {variant}") from e
+            prompt = generator.composer.compose(
+                action_name=variant_action,
+                persona_name=persona,
+                example_names=examples,
+                prompt_config=prompt_config,
+            )
+            return prompt
 
-        # Build context for variant template
-        variant_context: dict[str, Any] = {
-            "persona_name": persona,
-            "action_name": action,
-            "variant_name": variant,
-            "tool": config.generate.tool,
-            "library": config.generate.library,
-            "metadata": metadata,
-        }
+        except ActionNotFoundError:
+            # Template doesn't exist - generate it
+            logger.info(
+                f"Template for {variant_action} not found, generating it"
+            )
 
-        # Render variant template
-        engine = Jinja2Engine()
-        variant_instruction = engine.render(variant_template_content, variant_context)
+            # Generate the variant action template using async context
+            try:
+                # Call generate_single_variant with mcp strategy
+                # Note: This is synchronous but handles async internally via ctx
+                generator.variant_generator.generate_single_variant(
+                    variant_name=variant,
+                    action_name=action,
+                    persona_name=persona,
+                    strategy="mcp",
+                    ctx=ctx,
+                    metadata=metadata,
+                )
+                logger.info(f"Generated template for {variant_action}")
 
-        # Create the complete prompt for sampling
-        sampling_prompt = (
-            f"{variant_instruction}\n\n# Base Prompt to Transform\n\n{base_prompt}"
-        )
+            except Exception as e:
+                logger.error(f"Failed to generate template {variant_action}: {e}")
+                raise RuntimeError(
+                    f"Template generation failed for {variant_action}: {e}"
+                ) from e
 
-        # Use ctx.sample() to generate the variant
-        try:
-            response = await ctx.sample(sampling_prompt)
-            # SamplingResponse has .text attribute with the generated content
-            variant_content: str = response.text  # type: ignore[union-attr]
-        except Exception as e:
-            logger.error(f"Failed to sample variant {name}: {e}")
-            raise RuntimeError(f"Variant generation failed: {e}") from e
+            # Now compose from the newly created template
+            try:
+                prompt = generator.composer.compose(
+                    action_name=variant_action,
+                    persona_name=persona,
+                    example_names=examples,
+                    prompt_config=prompt_config,
+                )
+                return prompt
 
-        # Cache the result
-        cached_variant = CachedVariant(
-            variant_name=variant,
-            action_name=action,
-            persona_name=persona,
-            content=variant_content,
-            generated_at=datetime.now(),
-            metadata=metadata,
-        )
-        cache.add(cached_variant)
-        logger.info(f"Cached variant: {name}")
-
-        return variant_content
+            except Exception as e:
+                logger.error(
+                    f"Failed to compose {variant_action} after generation: {e}"
+                )
+                raise RuntimeError(
+                    f"Composition failed for {variant_action}: {e}"
+                ) from e
 
     # Set function metadata
     variant_prompt.__name__ = name.replace("-", "_")
